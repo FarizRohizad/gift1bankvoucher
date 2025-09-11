@@ -1,16 +1,37 @@
 <?php
 session_start();
+include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /group1GIFT/landingpage.php");
+    header("Location: /../landingpage.php");
     exit();
 }
 
-// Get user info
-$userName = $_SESSION['UserName'];
-$userRole = $_SESSION['UserRole'];
-$userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
+$userID = $_SESSION['UserID'];
+
+// Fetch latest info from DB
+$sql = "SELECT User_Name, User_Role, User_Points FROM users WHERE User_ID = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userID);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result && $row = $result->fetch_assoc()) {
+    $userName   = $row['User_Name'];
+    $userRole   = $row['User_Role'];
+    $userPoints = $row['User_Points'];
+
+    // Optional: update session for consistency
+    $_SESSION['UserName']   = $userName;
+    $_SESSION['UserRole']   = $userRole;
+    $_SESSION['UserPoints'] = $userPoints;
+} else {
+    // fallback kalau query failed
+    $userName   = $_SESSION['UserName'];
+    $userRole   = $_SESSION['UserRole'];
+    $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,9 +39,9 @@ $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - Home</title>
-    <link rel="stylesheet" href="/group1GIFT/toastr.min.css">
+    <link rel="stylesheet" href="/../toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/group1GIFT/toastr.min.js"></script>
+    <script src="/../toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -188,13 +209,14 @@ $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
     </style>
 </head>
 <body>
+    
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/group1GIFT/home.php">Home</a>
-            <a href="/group1GIFT/rewards.php">Offers</a>
-            <a href="/group1GIFT/profile.php">Profile</a>
-            <form style="display:inline;" method="post" action="/group1GIFT/logout.php">
+            <a href="/../home.php">Home</a>
+            <a href="/../rewards.php">Offers</a>
+            <a href="/../profile.php">Profile</a>
+            <form style="display:inline;" method="post" action="/../logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -211,8 +233,8 @@ $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
             <div>Earn more points by making transactions, referrals, or redeeming special offers.</div>
         </div>
-        <a href="/group1GIFT/rewards.php" class="btn">Redeem Rewards</a>
-        <a href="/group1GIFT/profile.php" class="btn">My Profile</a>
+        <a href="/../rewards.php" class="btn">Redeem Rewards</a>
+        <a href="/../profile.php" class="btn">My Profile</a>
     </div>
     <div class="offers-section">
         <div class="offers-title">Featured Offers</div>
@@ -222,28 +244,28 @@ $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
                 <div class="offer-name">RM50 Shopping Voucher</div>
                 <div class="offer-points">1,000 Points</div>
                 <div class="offer-desc">Spend at selected retailers and partners.</div>
-                <a href="/group1GIFT/rewards.php" class="btn">Redeem</a>
+                <a href="/../rewards.php" class="btn">Redeem</a>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🍽️</div>
                 <div class="offer-name">Dining Discount</div>
                 <div class="offer-points">700 Points</div>
                 <div class="offer-desc">Enjoy 20% off at top restaurants in Malaysia.</div>
-                <a href="/group1GIFT/rewards.php" class="btn">Redeem</a>
+                <a href="/../rewards.php" class="btn">Redeem</a>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🚗</div>
                 <div class="offer-name">Petrol Cashback</div>
                 <div class="offer-points">900 Points</div>
                 <div class="offer-desc">Get RM30 cashback on your next petrol refill.</div>
-                <a href="/group1GIFT/rewards.php" class="btn">Redeem</a>
+                <a href="/../rewards.php" class="btn">Redeem</a>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🛍️</div>
                 <div class="offer-name">Online Store Voucher</div>
                 <div class="offer-points">500 Points</div>
                 <div class="offer-desc">RM25 voucher for popular online shops.</div>
-                <a href="/group1GIFT/rewards.php" class="btn">Redeem</a>
+                <a href="/../rewards.php" class="btn">Redeem</a>
             </div>
         </div>
     </div>

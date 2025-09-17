@@ -32,6 +32,13 @@ if ($result && $row = $result->fetch_assoc()) {
     $userRole   = $_SESSION['UserRole'];
     $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
 }
+
+// Initialize cart if not already set
+if (!isset($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
+}
+$cartItemCount = count($_SESSION['cart']);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -68,15 +75,32 @@ if ($result && $row = $result->fetch_assoc()) {
             font-size: 1.8rem;
             margin-right: 8px;
         }
+        .nav-links {
+            display: flex;
+            align-items: center;
+        }
         .nav-links a {
             color: #fff;
             text-decoration: none;
             font-weight: 500;
             margin-left: 2rem;
             transition: color 0.3s;
+            position: relative; /* For cart item count */
         }
         .nav-links a:hover {
             color: #ffe165;
+        }
+        .cart-count {
+            background-color: #ffe165;
+            color: #0e499f;
+            border-radius: 50%;
+            padding: 2px 7px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            position: absolute;
+            top: -8px;
+            right: -12px;
+            line-height: 1;
         }
         .welcome-section {
             background: #fff;
@@ -214,8 +238,9 @@ if ($result && $row = $result->fetch_assoc()) {
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
             <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Offers</a>
+            <a href="/../rewards.php">Voucher</a>
             <a href="/../profile.php">Profile</a>
+            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
             <form style="display:inline;" method="post" action="/../logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
@@ -244,28 +269,29 @@ if ($result && $row = $result->fetch_assoc()) {
                 <div class="offer-name">RM50 Shopping Voucher</div>
                 <div class="offer-points">1,000 Points</div>
                 <div class="offer-desc">Spend at selected retailers and partners.</div>
-                <a href="/../rewards.php" class="btn">Redeem</a>
+                <!-- Changed to a button with data attributes for AJAX -->
+                <button class="btn add-to-cart-btn" data-id="1" data-name="RM50 Shopping Voucher" data-points="1000">Add to Cart</button>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🍽️</div>
                 <div class="offer-name">Dining Discount</div>
                 <div class="offer-points">700 Points</div>
                 <div class="offer-desc">Enjoy 20% off at top restaurants in Malaysia.</div>
-                <a href="/../rewards.php" class="btn">Redeem</a>
+                <button class="btn add-to-cart-btn" data-id="2" data-name="Dining Discount" data-points="700">Add to Cart</button>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🚗</div>
                 <div class="offer-name">Petrol Cashback</div>
                 <div class="offer-points">900 Points</div>
                 <div class="offer-desc">Get RM30 cashback on your next petrol refill.</div>
-                <a href="/../rewards.php" class="btn">Redeem</a>
+                <button class="btn add-to-cart-btn" data-id="3" data-name="Petrol Cashback" data-points="900">Add to Cart</button>
             </div>
             <div class="offer-card">
                 <div class="offer-icon">🛍️</div>
                 <div class="offer-name">Online Store Voucher</div>
                 <div class="offer-points">500 Points</div>
                 <div class="offer-desc">RM25 voucher for popular online shops.</div>
-                <a href="/../rewards.php" class="btn">Redeem</a>
+                <button class="btn add-to-cart-btn" data-id="4" data-name="Online Store Voucher" data-points="500">Add to Cart</button>
             </div>
         </div>
     </div>
@@ -295,6 +321,35 @@ if ($result && $row = $result->fetch_assoc()) {
                 toastr.success("<?php echo addslashes($_SESSION['welcome']); ?>");
                 <?php unset($_SESSION['welcome']); ?>
             <?php endif; ?>
+
+            // Handle Add to Cart button clicks
+            $('.add-to-cart-btn').on('click', function() {
+                const itemId = $(this).data('id');
+                const itemName = $(this).data('name');
+                const itemPoints = $(this).data('points');
+
+                $.ajax({
+                    url: '/../add_to_cart.php', // Path to your new AJAX script
+                    type: 'POST',
+                    data: {
+                        id: itemId,
+                        name: itemName,
+                        points: itemPoints
+                    },
+                    success: function(response) {
+                        const res = JSON.parse(response);
+                        if (res.status === 'success') {
+                            toastr.success(res.message);
+                            $('#cart-item-count').text(res.cartCount); // Update cart count in header
+                        } else {
+                            toastr.error(res.message);
+                        }
+                    },
+                    error: function() {
+                        toastr.error("Error adding item to cart.");
+                    }
+                });
+            });
         });
     </script>
 </body>

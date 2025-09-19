@@ -33,29 +33,132 @@ if ($result && $row = $result->fetch_assoc()) {
     $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
 }
 
-// Sample Voucher Data (you would typically fetch this from a database)
-$vouchers = [
-    'Shopping' => [
-        ['id' => 1, 'name' => 'RM50 AEON Voucher', 'points' => 1000, 'description' => 'Valid at all AEON outlets nationwide.'],
-        ['id' => 2, 'name' => 'RM25 Zalora Voucher', 'points' => 800, 'description' => 'For your next fashion haul on Zalora.'],
-        ['id' => 3, 'name' => 'RM100 Harvey Norman Voucher', 'points' => 1800, 'description' => 'Discount on electronics and home appliances.'],
-    ],
-    'Dining' => [
-        ['id' => 4, 'name' => 'RM30 GrabFood Credit', 'points' => 700, 'description' => 'Enjoy delicious meals delivered to your door.'],
-        ['id' => 5, 'name' => 'Starbucks Buy 1 Get 1 Free', 'points' => 500, 'description' => 'Share a coffee with a friend.'],
-        ['id' => 6, 'name' => 'RM50 Dining Voucher (TGIF)', 'points' => 1200, 'description' => 'Treat yourself at TGI Fridays.'],
-    ],
-    'Travel & Entertainment' => [
-        ['id' => 7, 'name' => 'RM50 KLOOK Voucher', 'points' => 1100, 'description' => 'Discount on attractions and activities.'],
-        ['id' => 8, 'name' => 'GSC Cinema Ticket (2 pax)', 'points' => 950, 'description' => 'Catch the latest blockbuster with a loved one.'],
-        ['id' => 9, 'name' => 'RM100 AirAsia Flight Voucher', 'points' => 2500, 'description' => 'Towards your next domestic adventure.'],
-    ],
-    'Cashback & Others' => [
-        ['id' => 10, 'name' => 'RM30 Petrol Cashback', 'points' => 900, 'description' => 'Get cashback on your next petrol refill.'],
-        ['id' => 11, 'name' => 'RM20 Phone Bill Rebate', 'points' => 600, 'description' => 'Get a rebate on your next mobile bill.'],
-        ['id' => 12, 'name' => 'Fitness Class Pass', 'points' => 750, 'description' => 'One-time pass for a fitness class.'],
-    ]
-];
+// Initialize cart if not already set
+if (!isset($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
+}
+// Calculate cart item count (sum of quantities)
+$cartItemCount = 0;
+foreach ($_SESSION['cart'] as $item) {
+    $cartItemCount += $item['quantity'];
+}
+
+// Fetch vouchers from database
+$vouchers = [];
+$sql = "SELECT voucherID, name, expiredDate, cost, categoryName FROM Voucher WHERE expiredDate >= CURDATE() ORDER BY categoryName, cost";
+$result = $conn->query($sql);
+
+if ($result && $result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $category = $row['categoryName'];
+        if (!isset($vouchers[$category])) {
+            $vouchers[$category] = [];
+        }
+        
+        $vouchers[$category][] = [
+            'id' => $row['voucherID'],
+            'name' => $row['name'],
+            'points' => $row['cost'],
+            'expiredDate' => $row['expiredDate'],
+            'description' => 'Valid until ' . date('M j, Y', strtotime($row['expiredDate']))
+        ];
+    }
+}
+
+// Handle voucher redemption
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isset($_POST['action'])) {
+    $voucher_id = intval($_POST['voucher_id']);
+    $action = $_POST['action'];
+    
+    // Get voucher details
+    $voucher_sql = "SELECT cost, name FROM Voucher WHERE voucherID = ?";
+    $voucher_stmt = $conn->prepare($voucher_sql);
+    $voucher_stmt->bind_param("i", $voucher_id);
+    $voucher_stmt->execute();
+    $voucher_result = $voucher_stmt->get_result();
+    
+    if ($voucher_result && $voucher_row = $voucher_result->fetch_assoc()) {
+        $voucher_cost = $voucher_row['cost'];
+        $voucher_name = $voucher_row['name'];
+        
+        if ($action === 'redeem') {
+            // Handle direct redemption
+            // Check if user has enough points
+            if ($userPoints >= $voucher_cost) {
+                // Start transaction
+                $conn->begin_transaction();
+                
+                try {
+                    // 1. Add to history
+                    $history_sql = "INSERT INTO History (userId, voucherID, quantity, pointCost) VALUES (?, ?, 1, ?)";
+                    $history_stmt = $conn->prepare($history_sql);
+                    $history_stmt->bind_param("iii", $userID, $voucher_id, $voucher_cost);
+                    $history_stmt->execute();
+                    
+                    // 2. Update user points
+                    $update_sql = "UPDATE users SET User_Points = User_Points - ? WHERE User_ID = ?";
+                    $update_stmt = $conn->prepare($update_sql);
+                    $update_stmt->bind_param("ii", $voucher_cost, $userID);
+                    $update_stmt->execute();
+                    
+                    // 3. Add to points table (debit)
+                    $points_sql = "INSERT INTO Points (userId, debit) VALUES (?, ?)";
+                    $points_stmt = $conn->prepare($points_sql);
+                    $points_stmt->bind_param("ii", $userID, $voucher_cost);
+                    $points_stmt->execute();
+                    
+                    // Commit transaction
+                    $conn->commit();
+                    
+                    // Update session and local variables
+                    $userPoints -= $voucher_cost;
+                    $_SESSION['UserPoints'] = $userPoints;
+                    
+                    $_SESSION['success_message'] = "Successfully redeemed '$voucher_name'!";
+                } catch (Exception $e) {
+                    // Rollback transaction on error
+                    $conn->rollback();
+                    $_SESSION['error_message'] = "Error redeeming voucher: " . $e->getMessage();
+                }
+            } else {
+                $_SESSION['error_message'] = "You don't have enough points to redeem this voucher.";
+            }
+        } elseif ($action === 'add_to_cart') {
+            // Handle add to cart
+            $found = false;
+            foreach ($_SESSION['cart'] as &$item) {
+                if ($item['id'] == $voucher_id) {
+                    $item['quantity'] += 1;
+                    $found = true;
+                    break;
+                }
+            }
+            
+            if (!$found) {
+                $_SESSION['cart'][] = [
+                    'id' => $voucher_id,
+                    'name' => $voucher_name,
+                    'points' => $voucher_cost,
+                    'quantity' => 1
+                ];
+            }
+            
+            // Update cart count
+            $cartItemCount = 0;
+            foreach ($_SESSION['cart'] as $item) {
+                $cartItemCount += $item['quantity'];
+            }
+            
+            $_SESSION['success_message'] = "'$voucher_name' added to cart!";
+        }
+    } else {
+        $_SESSION['error_message'] = "Voucher not found.";
+    }
+    
+    // Redirect to avoid form resubmission
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit();
+}
 
 ?>
 <!DOCTYPE html>
@@ -95,15 +198,32 @@ $vouchers = [
             font-size: 1.8rem;
             margin-right: 8px;
         }
+        .nav-links {
+            display: flex;
+            align-items: center;
+        }
         .nav-links a {
             color: #fff;
             text-decoration: none;
             font-weight: 500;
             margin-left: 2rem;
             transition: color 0.3s;
+            position: relative; /* For cart item count */
         }
         .nav-links a:hover {
             color: #ffe165;
+        }
+        .cart-count {
+            background-color: #ffe165;
+            color: #0e499f;
+            border-radius: 50%;
+            padding: 2px 7px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            position: absolute;
+            top: -8px;
+            right: -12px;
+            line-height: 1;
         }
         .container {
             max-width: 1000px;
@@ -220,16 +340,32 @@ $vouchers = [
             padding: 0.6rem 1.5rem;
             font-size: 1rem;
             width: fit-content;
-            margin: 0 auto;
+            margin: 0 auto 0.5rem auto;
         }
-        .btn-redeem.disabled {
+        .btn-cart {
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            width: fit-content;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        }
+        .btn-cart:hover {
+            background: #2E7D32;
+            color: white;
+        }
+        .btn.disabled {
             background: #ccc;
             cursor: not-allowed;
             box-shadow: none;
         }
-        .btn-redeem.disabled:hover {
+        .btn.disabled:hover {
             background: #ccc;
             color: white;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
         .footer {
             background: #143c6b; color: white;
@@ -287,6 +423,7 @@ $vouchers = [
             <a href="/../home.php">Home</a>
             <a href="/../rewards.php">Voucher</a>
             <a href="/../profile.php">Profile</a>
+            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
             <form style="display:inline;" method="post" action="/../logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
@@ -301,45 +438,69 @@ $vouchers = [
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
         </div>
 
-        <?php foreach ($vouchers as $category => $items): ?>
-            <div class="category-section">
-                <h3 class="category-title">
-                    <?php 
-                        // Assign an emoji icon based on category
-                        $icon = '';
-                        switch ($category) {
-                            case 'Shopping': $icon = '🛍️'; break;
-                            case 'Dining': $icon = '🍽️'; break;
-                            case 'Travel & Entertainment': $icon = '✈️'; break;
-                            case 'Cashback & Others': $icon = '💰'; break;
-                            default: $icon = '⭐';
-                        }
-                        echo $icon . ' ' . htmlspecialchars($category); 
-                    ?>
-                </h3>
-                <div class="voucher-list">
-                    <?php foreach ($items as $voucher): ?>
-                        <div class="voucher-card">
-                            <div>
-                                <div class="voucher-name"><?php echo htmlspecialchars($voucher['name']); ?></div>
-                                <div class="voucher-points"><?php echo number_format($voucher['points']); ?> Points</div>
-                                <div class="voucher-desc"><?php echo htmlspecialchars($voucher['description']); ?></div>
+        <?php if (!empty($vouchers)): ?>
+            <?php foreach ($vouchers as $category => $items): ?>
+                <div class="category-section">
+                    <h3 class="category-title">
+                        <?php 
+                            // Assign an emoji icon based on category
+                            $icon = '';
+                            switch ($category) {
+                                case 'Shopping': $icon = '🛍️'; break;
+                                case 'Dining': $icon = '🍽️'; break;
+                                case 'Travel': $icon = '✈️'; break;
+                                case 'Entertainment': $icon = '🎬'; break;
+                                case 'Cashback': $icon = '💰'; break;
+                                default: $icon = '⭐';
+                            }
+                            echo $icon . ' ' . htmlspecialchars($category); 
+                        ?>
+                    </h3>
+                    <div class="voucher-list">
+                        <?php foreach ($items as $voucher): ?>
+                            <div class="voucher-card">
+                                <div>
+                                    <div class="voucher-name"><?php echo htmlspecialchars($voucher['name']); ?></div>
+                                    <div class="voucher-points"><?php echo number_format($voucher['points']); ?> Points</div>
+                                    <div class="voucher-desc"><?php echo htmlspecialchars($voucher['description']); ?></div>
+                                </div>
+                                <div class="button-group">
+                                    <!-- Redeem Button -->
+                                    <form method="POST" action="" style="margin: 0;">
+                                        <input type="hidden" name="voucher_id" value="<?php echo $voucher['id']; ?>">
+                                        <input type="hidden" name="action" value="redeem">
+                                        <button 
+                                            type="submit"
+                                            class="btn btn-redeem" 
+                                            <?php echo ($userPoints < $voucher['points']) ? 'disabled' : ''; ?>
+                                        >
+                                            <?php echo ($userPoints < $voucher['points']) ? 'Not Enough Points' : 'Redeem Now'; ?>
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- Add to Cart Button -->
+                                    <form method="POST" action="" style="margin: 0;">
+                                        <input type="hidden" name="voucher_id" value="<?php echo $voucher['id']; ?>">
+                                        <input type="hidden" name="action" value="add_to_cart">
+                                        <button 
+                                            type="submit"
+                                            class="btn btn-cart" 
+                                        >
+                                            Add to Cart
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                            <button 
-                                class="btn btn-redeem" 
-                                data-voucher-id="<?php echo $voucher['id']; ?>"
-                                data-voucher-name="<?php echo htmlspecialchars($voucher['name']); ?>"
-                                data-voucher-points="<?php echo $voucher['points']; ?>"
-                                onclick="redeemVoucher(this)"
-                                <?php echo ($userPoints < $voucher['points']) ? 'disabled' : ''; ?>
-                            >
-                                Redeem
-                            </button>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="category-section">
+                <h3 class="category-title">No Vouchers Available</h3>
+                <p>There are currently no vouchers available for redemption. Please check back later.</p>
             </div>
-        <?php endforeach; ?>
+        <?php endif; ?>
 
     </div>
 
@@ -367,9 +528,6 @@ $vouchers = [
                 "hideMethod": "fadeOut"
             };
 
-            // Initial check for disabled buttons based on current points
-            updateRedeemButtonStates();
-
             <?php if (isset($_SESSION['success_message'])): ?>
                 toastr.success("<?php echo addslashes($_SESSION['success_message']); ?>");
                 <?php unset($_SESSION['success_message']); ?>
@@ -379,60 +537,6 @@ $vouchers = [
                 <?php unset($_SESSION['error_message']); ?>
             <?php endif; ?>
         });
-
-        function updateRedeemButtonStates() {
-            let currentPoints = parseInt($('#points-balance').text().replace(/,/g, ''));
-            $('.btn-redeem').each(function() {
-                let voucherPoints = parseInt($(this).data('voucher-points'));
-                if (currentPoints < voucherPoints) {
-                    $(this).prop('disabled', true).addClass('disabled').text('Not Enough Points');
-                } else {
-                    $(this).prop('disabled', false).removeClass('disabled').text('Redeem');
-                }
-            });
-        }
-
-        function redeemVoucher(button) {
-            let voucherId = $(button).data('voucher-id');
-            let voucherName = $(button).data('voucher-name');
-            let voucherPoints = parseInt($(button).data('voucher-points'));
-            let currentPointsElement = $('#points-balance');
-            let currentPoints = parseInt(currentPointsElement.text().replace(/,/g, ''));
-
-            if (currentPoints >= voucherPoints) {
-                // In a real application, you would send an AJAX request to a PHP script here
-                // For example:
-                /*
-                $.ajax({
-                    url: 'redeem_voucher.php', // A new PHP script to handle redemption
-                    method: 'POST',
-                    data: { voucher_id: voucherId, points_cost: voucherPoints },
-                    success: function(response) {
-                        if (response.success) {
-                            currentPoints -= voucherPoints;
-                            currentPointsElement.text(currentPoints.toLocaleString());
-                            toastr.success(`Successfully redeemed "${voucherName}"!`);
-                            updateRedeemButtonStates(); // Re-evaluate button states
-                        } else {
-                            toastr.error(response.message || 'Error redeeming voucher.');
-                        }
-                    },
-                    error: function() {
-                        toastr.error('An error occurred during redemption.');
-                    }
-                });
-                */
-
-                // For demonstration purposes, we'll update points directly on the client side
-                currentPoints -= voucherPoints;
-                currentPointsElement.text(currentPoints.toLocaleString());
-                toastr.success(`Successfully redeemed "${voucherName}"! Check your profile for details.`);
-                updateRedeemButtonStates(); // Re-evaluate button states after points change
-                
-            } else {
-                toastr.error('You do not have enough points to redeem this voucher.');
-            }
-        }
     </script>
 </body>
 </html>

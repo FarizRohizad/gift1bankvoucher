@@ -8,12 +8,27 @@ if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
 
-$response = ['status' => 'error', 'message' => 'Invalid request.', 'cartCount' => count($_SESSION['cart'])];
+$response = ['status' => 'error', 'message' => 'Invalid request.', 'cartTotalQuantity' => 0];
+
+// Calculate current total quantity for the initial response
+$currentCartTotalQuantity = 0;
+foreach ($_SESSION['cart'] as $item) {
+    $currentCartTotalQuantity += $item['quantity'];
+}
+$response['cartTotalQuantity'] = $currentCartTotalQuantity;
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itemId   = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $itemName = filter_input(INPUT_POST, 'name', FILTER_SANITIZE_STRING);
     $itemPoints = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_INT);
+
+    // Ensure user is logged in before adding to cart
+    if (!isset($_SESSION['UserID'])) {
+        $response['message'] = 'Please log in to add items to your cart.';
+        echo json_encode($response);
+        exit();
+    }
 
     if ($itemId !== false && $itemId !== null && $itemName && $itemPoints !== false && $itemPoints !== null) {
         // Check if item already exists in cart, increment quantity
@@ -31,7 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response['message'] = htmlspecialchars($itemName) . " added to cart!";
         }
         $response['status'] = 'success';
-        $response['cartCount'] = count($_SESSION['cart']); // Return the number of unique items
+        
+        // Recalculate total quantity after updating cart
+        $newCartTotalQuantity = 0;
+        foreach ($_SESSION['cart'] as $item) {
+            $newCartTotalQuantity += $item['quantity'];
+        }
+        $response['cartTotalQuantity'] = $newCartTotalQuantity;
+
     } else {
         $response['message'] = "Invalid item data received.";
     }

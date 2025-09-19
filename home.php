@@ -37,7 +37,37 @@ if ($result && $row = $result->fetch_assoc()) {
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
-$cartItemCount = count($_SESSION['cart']);
+// Calculate cart item count (sum of quantities)
+$cartItemCount = 0;
+foreach ($_SESSION['cart'] as $item) {
+    $cartItemCount += $item['quantity'];
+}
+
+
+// --- Fetch vouchers from the database ---
+$vouchers = [];
+$sql_vouchers = "SELECT voucherID, name, cost, categoryName FROM Voucher ORDER BY cost ASC LIMIT 4"; // Fetching up to 4 featured vouchers
+$result_vouchers = $conn->query($sql_vouchers);
+
+if ($result_vouchers) {
+    while ($voucher_row = $result_vouchers->fetch_assoc()) {
+        $vouchers[] = $voucher_row;
+    }
+} else {
+    // Handle error if voucher query fails
+    error_log("Error fetching vouchers: " . $conn->error);
+}
+
+// Map categoryName to an icon (optional, you can expand this)
+function getVoucherIcon($categoryName) {
+    switch ($categoryName) {
+        case 'Shopping': return '🎁';
+        case 'Food & Beverage': return '🍽️';
+        case 'Automotive': return '🚗';
+        case 'E-commerce': return '🛍️';
+        default: return '🌟'; // Default icon
+    }
+}
 
 ?>
 <!DOCTYPE html>
@@ -264,35 +294,34 @@ $cartItemCount = count($_SESSION['cart']);
     <div class="offers-section">
         <div class="offers-title">Featured Offers</div>
         <div class="offer-list">
+            <?php foreach ($vouchers as $voucher): ?>
             <div class="offer-card">
-                <div class="offer-icon">🎁</div>
-                <div class="offer-name">RM50 Shopping Voucher</div>
-                <div class="offer-points">1,000 Points</div>
-                <div class="offer-desc">Spend at selected retailers and partners.</div>
-                <!-- Changed to a button with data attributes for AJAX -->
-                <button class="btn add-to-cart-btn" data-id="1" data-name="RM50 Shopping Voucher" data-points="1000">Add to Cart</button>
+                <div class="offer-icon"><?php echo getVoucherIcon($voucher['categoryName']); ?></div>
+                <div class="offer-name"><?php echo htmlspecialchars($voucher['name']); ?></div>
+                <div class="offer-points"><?php echo number_format($voucher['cost']); ?> Points</div>
+                <div class="offer-desc">
+                    <?php 
+                        // You'll likely need a 'description' column in your Voucher table
+                        // For now, I'll use a generic description based on the name.
+                        switch($voucher['name']) {
+                            case 'RM50 Shopping Voucher': echo 'Spend at selected retailers and partners.'; break;
+                            case 'Dining Discount': echo 'Enjoy 20% off at top restaurants in Malaysia.'; break;
+                            case 'Petrol Cashback': echo 'Get RM30 cashback on your next petrol refill.'; break;
+                            case 'Online Store Voucher': echo 'RM25 voucher for popular online shops.'; break;
+                            default: echo 'A special offer just for you!'; break;
+                        }
+                    ?>
+                </div>
+                <!-- Changed back to button with data attributes for AJAX -->
+                <button class="btn add-to-cart-btn" 
+                        data-id="<?php echo htmlspecialchars($voucher['voucherID']); ?>" 
+                        data-name="<?php echo htmlspecialchars($voucher['name']); ?>" 
+                        data-points="<?php echo htmlspecialchars($voucher['cost']); ?>">Add to Cart</button>
             </div>
-            <div class="offer-card">
-                <div class="offer-icon">🍽️</div>
-                <div class="offer-name">Dining Discount</div>
-                <div class="offer-points">700 Points</div>
-                <div class="offer-desc">Enjoy 20% off at top restaurants in Malaysia.</div>
-                <button class="btn add-to-cart-btn" data-id="2" data-name="Dining Discount" data-points="700">Add to Cart</button>
-            </div>
-            <div class="offer-card">
-                <div class="offer-icon">🚗</div>
-                <div class="offer-name">Petrol Cashback</div>
-                <div class="offer-points">900 Points</div>
-                <div class="offer-desc">Get RM30 cashback on your next petrol refill.</div>
-                <button class="btn add-to-cart-btn" data-id="3" data-name="Petrol Cashback" data-points="900">Add to Cart</button>
-            </div>
-            <div class="offer-card">
-                <div class="offer-icon">🛍️</div>
-                <div class="offer-name">Online Store Voucher</div>
-                <div class="offer-points">500 Points</div>
-                <div class="offer-desc">RM25 voucher for popular online shops.</div>
-                <button class="btn add-to-cart-btn" data-id="4" data-name="Online Store Voucher" data-points="500">Add to Cart</button>
-            </div>
+            <?php endforeach; ?>
+            <?php if (empty($vouchers)): ?>
+                <p style="grid-column: 1 / -1; text-align: center; color: #777;">No featured offers available at the moment.</p>
+            <?php endif; ?>
         </div>
     </div>
     <div class="footer">
@@ -322,6 +351,17 @@ $cartItemCount = count($_SESSION['cart']);
                 <?php unset($_SESSION['welcome']); ?>
             <?php endif; ?>
 
+            // Display Toastr messages if set in session by other pages (like cart.php)
+            <?php if (isset($_SESSION['toastr_success'])): ?>
+                toastr.success("<?php echo addslashes($_SESSION['toastr_success']); ?>");
+                <?php unset($_SESSION['toastr_success']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['toastr_error'])): ?>
+                toastr.error("<?php echo addslashes($_SESSION['toastr_error']); ?>");
+                <?php unset($_SESSION['toastr_error']); ?>
+            <?php endif; ?>
+
             // Handle Add to Cart button clicks
             $('.add-to-cart-btn').on('click', function() {
                 const itemId = $(this).data('id');
@@ -336,11 +376,12 @@ $cartItemCount = count($_SESSION['cart']);
                         name: itemName,
                         points: itemPoints
                     },
-                    success: function(response) {
-                        const res = JSON.parse(response);
+                    dataType: 'json', // Expect JSON response
+                    success: function(res) {
                         if (res.status === 'success') {
                             toastr.success(res.message);
-                            $('#cart-item-count').text(res.cartCount); // Update cart count in header
+                            // Update cart count from the response
+                            $('#cart-item-count').text(res.cartTotalQuantity);
                         } else {
                             toastr.error(res.message);
                         }

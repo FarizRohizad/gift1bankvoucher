@@ -24,6 +24,7 @@ if ($result && $row = $result->fetch_assoc()) {
     // Update session points from DB to ensure it's current
     $_SESSION['UserPoints'] = $userPoints;
 } else {
+    // Fallback if query failed, use session data
     $userName   = $_SESSION['UserName'];
     $userRole   = $_SESSION['UserRole'];
     $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
@@ -32,17 +33,53 @@ if ($result && $row = $result->fetch_assoc()) {
 // Get cart items from session
 $cartItems = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
 $totalPoints = 0;
+$cartItemCount = 0; // Total quantity of items in cart
 foreach ($cartItems as $item) {
     $totalPoints += $item['points'] * $item['quantity'];
+    $cartItemCount += $item['quantity'];
 }
-$cartItemCount = count($cartItems);
+
+// Handle update item quantity with plus/minus
+if (isset($_POST['update_item_id']) && isset($_POST['action'])) {
+    $updateId = filter_input(INPUT_POST, 'update_item_id', FILTER_VALIDATE_INT);
+    $action   = $_POST['action']; // "increase" or "decrease"
+
+    if ($updateId !== false && $updateId !== null && isset($_SESSION['cart'][$updateId])) {
+        if ($action === "increase") {
+            $_SESSION['cart'][$updateId]['quantity']++;
+            $_SESSION['toastr_success'] = "Increased quantity of " . htmlspecialchars($_SESSION['cart'][$updateId]['name']) . ".";
+        } elseif ($action === "decrease") {
+            if ($_SESSION['cart'][$updateId]['quantity'] > 1) {
+                $_SESSION['cart'][$updateId]['quantity']--;
+                $_SESSION['toastr_success'] = "Decreased quantity of " . htmlspecialchars($_SESSION['cart'][$updateId]['name']) . ".";
+            } else {
+                $removedItemName = $_SESSION['cart'][$updateId]['name'];
+                unset($_SESSION['cart'][$updateId]);
+                $_SESSION['toastr_success'] = htmlspecialchars($removedItemName) . " removed from cart.";
+            }
+        }
+    } else {
+        $_SESSION['toastr_error'] = "Failed to update item quantity.";
+    }
+    header("Location: /../cart.php");
+    exit();
+}
+
 
 // Handle removing item from cart
+// Note: This now handles decreasing quantity or removing the item entirely.
 if (isset($_POST['remove_item_id'])) {
     $removeId = filter_input(INPUT_POST, 'remove_item_id', FILTER_VALIDATE_INT);
     if ($removeId !== false && $removeId !== null && isset($_SESSION['cart'][$removeId])) {
-        unset($_SESSION['cart'][$removeId]);
-        $_SESSION['toastr_success'] = "Item removed from cart.";
+        // Decrease quantity if greater than 1, otherwise remove item
+        if ($_SESSION['cart'][$removeId]['quantity'] > 1) {
+            $_SESSION['cart'][$removeId]['quantity']--;
+            $_SESSION['toastr_success'] = "Quantity of " . htmlspecialchars($_SESSION['cart'][$removeId]['name']) . " decreased.";
+        } else {
+            $removedItemName = $_SESSION['cart'][$removeId]['name'];
+            unset($_SESSION['cart'][$removeId]);
+            $_SESSION['toastr_success'] = htmlspecialchars($removedItemName) . " removed from cart.";
+        }
     } else {
         $_SESSION['toastr_error'] = "Failed to remove item.";
     }
@@ -52,31 +89,61 @@ if (isset($_POST['remove_item_id'])) {
 
 // Handle checkout
 if (isset($_POST['checkout'])) {
+    // Check if cart is empty before proceeding
+    if (empty($cartItems)) {
+        $_SESSION['toastr_error'] = "Your cart is empty. Please add items before checking out.";
+        header("Location: /../cart.php");
+        exit();
+    }
+
+    // Check if user has enough points
     if ($userPoints >= $totalPoints) {
         // --- REAL APPLICATION LOGIC HERE ---
         // 1. Deduct points from user in DB.
-        //    Example: $newPoints = $userPoints - $totalPoints;
-        //    $updateSql = "UPDATE users SET User_Points = ? WHERE User_ID = ?";
-        //    $updateStmt = $conn->prepare($updateSql);
-        //    $updateStmt->bind_param("ii", $newPoints, $userID);
-        //    $updateStmt->execute();
-
-        // 2. Record the redemption in a 'transactions' or 'orders' table.
-        //    Store $cartItems, $userID, $totalPoints, timestamp, etc.
-
-        // 3. Generate vouchers/codes for the redeemed items if applicable.
-
-        // --- SIMULATION FOR DEMONSTRATION ---
-        $_SESSION['cart'] = []; // Clear the cart
-        // Simulate point deduction in session (for immediate display)
-        $_SESSION['UserPoints'] -= $totalPoints; 
-        $_SESSION['toastr_success'] = "Checkout successful! Your items will be processed and points deducted.";
+        $newPoints = $userPoints - $totalPoints;
+        $updateSql = "UPDATE users SET User_Points = ? WHERE User_ID = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        $updateStmt->bind_param("ii", $newPoints, $userID);
         
-        // Redirect to home or a confirmation page
-        header("Location: /../home.php");
-        exit();
+        if (!$updateStmt->execute()) {
+            // Handle DB update error
+            $_SESSION['toastr_error'] = "An error occurred during point deduction. Please try again.";
+            header("Location: /../cart.php");
+            exit();
+        }
+
+        // 2. Record the redemption in a 'History' table.
+        // Begin transaction for atomicity if possible, for multiple inserts
+        $conn->begin_transaction();
+        try {
+            foreach ($cartItems as $item) {
+                $insertHistorySql = "INSERT INTO History (userId, voucherID, quantity, pointCost) VALUES (?, ?, ?, ?)";
+                $insertHistoryStmt = $conn->prepare($insertHistorySql);
+                $itemTotalCost = $item['points'] * $item['quantity'];
+                // Assuming pointCost is INT, use "iiii". If your table schema has it as VARCHAR, use "iiis" and adjust accordingly.
+                $insertHistoryStmt->bind_param("iiii", $userID, $item['id'], $item['quantity'], $itemTotalCost); 
+                if (!$insertHistoryStmt->execute()) {
+                    throw new Exception("Error inserting into history for item " . $item['name']);
+                }
+            }
+            $conn->commit(); // Commit the transaction
+            $_SESSION['cart'] = []; // Clear the cart only after successful DB operations
+            $_SESSION['toastr_success'] = "Checkout successful! Your rewards have been processed.";
+            
+            // Redirect to home or a confirmation page
+            header("Location: /../home.php"); // Redirect to home page
+            exit();
+
+        } catch (Exception $e) {
+            $conn->rollback(); // Rollback on error
+            error_log("Checkout failed: " . $e->getMessage()); // Log the error
+            $_SESSION['toastr_error'] = "An error occurred while recording your redemption. Please try again.";
+            header("Location: /../cart.php");
+            exit();
+        }
     } else {
-        $_SESSION['toastr_error'] = "Not enough points to complete this checkout!";
+        // Not enough points
+        $_SESSION['toastr_error'] = "Not enough points to complete this checkout! You need " . number_format($totalPoints) . " points, but only have " . number_format($userPoints) . " points.";
         header("Location: /../cart.php");
         exit();
     }
@@ -295,13 +362,37 @@ if (isset($_POST['checkout'])) {
                 <?php foreach ($cartItems as $itemId => $item): ?>
                     <div class="cart-item">
                         <div class="item-details">
-                            <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
-                            <div class="item-points"><?php echo number_format($item['points']); ?> Points x <?php echo $item['quantity']; ?></div>
-                        </div>
-                        <form method="post" style="display:inline;">
-                            <input type="hidden" name="remove_item_id" value="<?php echo $itemId; ?>">
-                            <button type="submit" class="remove-btn">Remove</button>
-                        </form>
+    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+    <div class="item-points"><?php echo number_format($item['points']); ?> Points</div>
+</div>
+
+<div style="display:flex; align-items:center; gap:8px;">
+    <!-- Decrease button -->
+    <form method="post" style="display:inline;">
+        <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
+        <input type="hidden" name="action" value="decrease">
+        <button type="submit" class="checkout-btn" style="padding:5px 12px;">-</button>
+    </form>
+
+    <!-- Quantity display -->
+    <span style="min-width:30px; text-align:center; font-weight:bold; color:#0e499f;">
+        <?php echo $item['quantity']; ?>
+    </span>
+
+    <!-- Increase button -->
+    <form method="post" style="display:inline;">
+        <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
+        <input type="hidden" name="action" value="increase">
+        <button type="submit" class="checkout-btn" style="padding:5px 12px;">+</button>
+    </form>
+
+    <!-- Remove button -->
+    <form method="post" style="display:inline;">
+        <input type="hidden" name="remove_item_id" value="<?php echo $itemId; ?>">
+        <button type="submit" class="remove-btn">Remove</button>
+    </form>
+</div>
+
                     </div>
                 <?php endforeach; ?>
             </div>

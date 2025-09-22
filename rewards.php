@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: landingpage.php");
     exit();
 }
 
@@ -167,9 +167,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - Rewards</title>
-    <link rel="stylesheet" href="/../toastr.min.css">
+    <link rel="stylesheet" href="toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -420,11 +420,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="/../logout.php">
+            <a href="home.php">Home</a>
+            <a href="rewards.php">Voucher</a>
+            <a href="profile.php">Profile</a>
+            <a href="cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>

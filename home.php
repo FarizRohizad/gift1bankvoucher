@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: landingpage.php");
     exit();
 }
 
@@ -76,9 +76,9 @@ function getVoucherIcon($categoryName) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - Home</title>
-    <link rel="stylesheet" href="/../toastr.min.css">
+    <link rel="stylesheet" href="toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -267,11 +267,11 @@ function getVoucherIcon($categoryName) {
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="/../logout.php">
+            <a href="home.php">Home</a>
+            <a href="rewards.php">Voucher</a>
+            <a href="profile.php">Profile</a>
+            <a href="cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -288,8 +288,8 @@ function getVoucherIcon($categoryName) {
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
             <div>Earn more points by making transactions, referrals, or redeeming special offers.</div>
         </div>
-        <a href="/../rewards.php" class="btn">Redeem Rewards</a>
-        <a href="/../profile.php" class="btn">My Profile</a>
+        <a href="rewards.php" class="btn">Redeem Rewards</a>
+        <a href="profile.php" class="btn">My Profile</a>
     </div>
     <div class="offers-section">
         <div class="offers-title">Featured Offers</div>
@@ -369,7 +369,7 @@ function getVoucherIcon($categoryName) {
                 const itemPoints = $(this).data('points');
 
                 $.ajax({
-                    url: '/../add_to_cart.php', // Path to your new AJAX script
+                    url: 'add_to_cart.php', // Path to your new AJAX script
                     type: 'POST',
                     data: {
                         id: itemId,

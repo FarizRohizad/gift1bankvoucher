@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
 $username = "root";
-$password = "1111";
+$password = "";
 $dbname = "optimabank_loyalty";
 
 // Create connection

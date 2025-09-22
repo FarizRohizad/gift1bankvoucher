@@ -89,7 +89,7 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
     <title>My Profile - OptimaBank</title>
     <link rel="stylesheet" href="/../toastr.min.css" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="toastr.min.js"></script>
     <style>
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -431,10 +431,10 @@ header .logout-btn:hover {
     <header class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <form method="post" action="/../logout.php" style="display:inline;">
+            <a href="home.php">Home</a>
+            <a href="rewards.php">Voucher</a>
+            <a href="profile.php">Profile</a>
+            <form method="post" action="logout.php" style="display:inline;">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -467,7 +467,7 @@ header .logout-btn:hover {
                 <button type="submit">Update Profile</button>
             </form>
 
-            <a href="/../home.php" class="back-link">&larr; Back to Home</a>
+            <a href="home.php" class="back-link">&larr; Back to Home</a>
         </section>
         
         <!-- Voucher Redemption History Section -->
@@ -493,7 +493,7 @@ header .logout-btn:hover {
             <?php else: ?>
                 <div class="no-history">
                     <p>You haven't redeemed any vouchers yet.</p>
-                    <p><a href="/../rewards.php">Browse available rewards</a></p>
+                    <p><a href="rewards.php">Browse available rewards</a></p>
                 </div>
             <?php endif; ?>
         </section>

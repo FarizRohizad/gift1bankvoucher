@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: landingpage.php");
     exit();
 }
 
@@ -61,7 +61,7 @@ if (isset($_POST['update_item_id']) && isset($_POST['action'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to update item quantity.";
     }
-    header("Location: /../cart.php");
+    header("Location: cart.php");
     exit();
 }
 
@@ -83,7 +83,7 @@ if (isset($_POST['remove_item_id'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to remove item.";
     }
-    header("Location: /../cart.php"); // Redirect to refresh cart page
+    header("Location: cart.php"); // Redirect to refresh cart page
     exit();
 }
 
@@ -92,7 +92,7 @@ if (isset($_POST['checkout'])) {
     // Check if cart is empty before proceeding
     if (empty($cartItems)) {
         $_SESSION['toastr_error'] = "Your cart is empty. Please add items before checking out.";
-        header("Location: /../cart.php");
+        header("Location: cart.php");
         exit();
     }
 
@@ -108,7 +108,7 @@ if (isset($_POST['checkout'])) {
         if (!$updateStmt->execute()) {
             // Handle DB update error
             $_SESSION['toastr_error'] = "An error occurred during point deduction. Please try again.";
-            header("Location: /../cart.php");
+            header("Location: cart.php");
             exit();
         }
 
@@ -131,20 +131,20 @@ if (isset($_POST['checkout'])) {
             $_SESSION['toastr_success'] = "Checkout successful! Your rewards have been processed.";
             
             // Redirect to home or a confirmation page
-            header("Location: /../home.php"); // Redirect to home page
+            header("Location: home.php"); // Redirect to home page
             exit();
 
         } catch (Exception $e) {
             $conn->rollback(); // Rollback on error
             error_log("Checkout failed: " . $e->getMessage()); // Log the error
             $_SESSION['toastr_error'] = "An error occurred while recording your redemption. Please try again.";
-            header("Location: /../cart.php");
+            header("Location: cart.php");
             exit();
         }
     } else {
         // Not enough points
         $_SESSION['toastr_error'] = "Not enough points to complete this checkout! You need " . number_format($totalPoints) . " points, but only have " . number_format($userPoints) . " points.";
-        header("Location: /../cart.php");
+        header("Location: cart.php");
         exit();
     }
 }
@@ -155,9 +155,9 @@ if (isset($_POST['checkout'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - My Cart</title>
-    <link rel="stylesheet" href="/../toastr.min.css">
+    <link rel="stylesheet" href="toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -339,11 +339,11 @@ if (isset($_POST['checkout'])) {
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="/../logout.php">
+            <a href="home.php">Home</a>
+            <a href="rewards.php">Voucher</a>
+            <a href="profile.php">Profile</a>
+            <a href="cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -355,7 +355,7 @@ if (isset($_POST['checkout'])) {
         <?php if (empty($cartItems)): ?>
             <div class="empty-cart">Your cart is empty. Start adding some exciting rewards!</div>
             <div style="text-align: center; margin-top: 2rem;">
-                <a href="/../home.php" class="checkout-btn">Continue Shopping</a>
+                <a href="home.php" class="checkout-btn">Continue Shopping</a>
             </div>
         <?php else: ?>
             <div class="cart-list">

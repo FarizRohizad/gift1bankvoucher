@@ -4,36 +4,44 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: landingpage.php");
+    header("Location: /../landingpage.php");
     exit();
 }
 
 $userID = $_SESSION['UserID'];
 
-// Fetch latest info from DB (for header display, points, etc.)
+// Fetch latest info from DB with error handling
 $sql = "SELECT User_Name, User_Role, User_Points FROM users WHERE User_ID = ?";
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $userID);
-$stmt->execute();
-$result = $stmt->get_result();
 
-if ($result && $row = $result->fetch_assoc()) {
-    $userName   = $row['User_Name'];
-    $userRole   = $row['User_Role'];
-    $userPoints = $row['User_Points'];
-    // Update session points from DB to ensure it's current
-    $_SESSION['UserPoints'] = $userPoints;
-} else {
-    // Fallback if query failed, use session data
+if (!$stmt) {
+    // Log error and use session data
+    error_log("Database error: " . $conn->error);
     $userName   = $_SESSION['UserName'];
     $userRole   = $_SESSION['UserRole'];
     $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
+} else {
+    $stmt->bind_param("i", $userID);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $row = $result->fetch_assoc()) {
+        $userName   = $row['User_Name'];
+        $userRole   = $row['User_Role'];
+        $userPoints = $row['User_Points'];
+        $_SESSION['UserPoints'] = $userPoints;
+        $_SESSION['UserName'] = $userName;
+    } else {
+        $userName   = $_SESSION['UserName'];
+        $userRole   = $_SESSION['UserRole'];
+        $userPoints = isset($_SESSION['UserPoints']) ? $_SESSION['UserPoints'] : 0;
+    }
 }
 
 // Get cart items from session
 $cartItems = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
 $totalPoints = 0;
-$cartItemCount = 0; // Total quantity of items in cart
+$cartItemCount = 0;
 foreach ($cartItems as $item) {
     $totalPoints += $item['points'] * $item['quantity'];
     $cartItemCount += $item['quantity'];
@@ -42,7 +50,7 @@ foreach ($cartItems as $item) {
 // Handle update item quantity with plus/minus
 if (isset($_POST['update_item_id']) && isset($_POST['action'])) {
     $updateId = filter_input(INPUT_POST, 'update_item_id', FILTER_VALIDATE_INT);
-    $action   = $_POST['action']; // "increase" or "decrease"
+    $action   = $_POST['action'];
 
     if ($updateId !== false && $updateId !== null && isset($_SESSION['cart'][$updateId])) {
         if ($action === "increase") {
@@ -61,17 +69,14 @@ if (isset($_POST['update_item_id']) && isset($_POST['action'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to update item quantity.";
     }
-    header("Location: cart.php");
+    header("Location: /../cart.php");
     exit();
 }
 
-
 // Handle removing item from cart
-// Note: This now handles decreasing quantity or removing the item entirely.
 if (isset($_POST['remove_item_id'])) {
     $removeId = filter_input(INPUT_POST, 'remove_item_id', FILTER_VALIDATE_INT);
     if ($removeId !== false && $removeId !== null && isset($_SESSION['cart'][$removeId])) {
-        // Decrease quantity if greater than 1, otherwise remove item
         if ($_SESSION['cart'][$removeId]['quantity'] > 1) {
             $_SESSION['cart'][$removeId]['quantity']--;
             $_SESSION['toastr_success'] = "Quantity of " . htmlspecialchars($_SESSION['cart'][$removeId]['name']) . " decreased.";
@@ -83,7 +88,7 @@ if (isset($_POST['remove_item_id'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to remove item.";
     }
-    header("Location: cart.php"); // Redirect to refresh cart page
+    header("Location: /../cart.php");
     exit();
 }
 
@@ -92,59 +97,91 @@ if (isset($_POST['checkout'])) {
     // Check if cart is empty before proceeding
     if (empty($cartItems)) {
         $_SESSION['toastr_error'] = "Your cart is empty. Please add items before checking out.";
-        header("Location: cart.php");
+        header("Location: /../cart.php");
         exit();
     }
 
     // Check if user has enough points
     if ($userPoints >= $totalPoints) {
-        // --- REAL APPLICATION LOGIC HERE ---
         // 1. Deduct points from user in DB.
         $newPoints = $userPoints - $totalPoints;
         $updateSql = "UPDATE users SET User_Points = ? WHERE User_ID = ?";
         $updateStmt = $conn->prepare($updateSql);
+        
+        if (!$updateStmt) {
+            $_SESSION['toastr_error'] = "Database error: " . $conn->error;
+            header("Location: /../cart.php");
+            exit();
+        }
+        
         $updateStmt->bind_param("ii", $newPoints, $userID);
         
         if (!$updateStmt->execute()) {
-            // Handle DB update error
             $_SESSION['toastr_error'] = "An error occurred during point deduction. Please try again.";
-            header("Location: cart.php");
+            header("Location: /../cart.php");
             exit();
         }
 
-        // 2. Record the redemption in a 'History' table.
-        // Begin transaction for atomicity if possible, for multiple inserts
+        // 2. Record the redemption in the 'History' table.
         $conn->begin_transaction();
+        $historyIds = [];
+        
         try {
             foreach ($cartItems as $item) {
-                $insertHistorySql = "INSERT INTO History (userId, voucherID, quantity, pointCost) VALUES (?, ?, ?, ?)";
-                $insertHistoryStmt = $conn->prepare($insertHistorySql);
-                $itemTotalCost = $item['points'] * $item['quantity'];
-                // Assuming pointCost is INT, use "iiii". If your table schema has it as VARCHAR, use "iiis" and adjust accordingly.
-                $insertHistoryStmt->bind_param("iiii", $userID, $item['id'], $item['quantity'], $itemTotalCost); 
-                if (!$insertHistoryStmt->execute()) {
-                    throw new Exception("Error inserting into history for item " . $item['name']);
+                // Fetch voucher details from Voucher table
+                $voucherDetailSql = "SELECT voucherID, name FROM Voucher WHERE voucherID = ?";
+                $voucherDetailStmt = $conn->prepare($voucherDetailSql);
+                
+                if (!$voucherDetailStmt) {
+                    throw new Exception("Voucher query preparation failed: " . $conn->error);
                 }
+                
+                $voucherDetailStmt->bind_param("i", $item['id']);
+                $voucherDetailStmt->execute();
+                $voucherDetailResult = $voucherDetailStmt->get_result();
+                $voucherDetails = $voucherDetailResult->fetch_assoc();
+
+                if (!$voucherDetails) {
+                    throw new Exception("Voucher details not found for ID: " . $item['id']);
+                }
+
+                // Fixed SQL query - using dateBuy instead of transactionDate
+                $insertHistorySql = "INSERT INTO History (userId, voucherID, quantity, pointCost, dateBuy) VALUES (?, ?, ?, ?, NOW())";
+                $insertHistoryStmt = $conn->prepare($insertHistorySql);
+                
+                if (!$insertHistoryStmt) {
+                    throw new Exception("History query preparation failed: " . $conn->error);
+                }
+                
+                $itemTotalCost = $item['points'] * $item['quantity'];
+                $insertHistoryStmt->bind_param("iiii", $userID, $item['id'], $item['quantity'], $itemTotalCost);
+                
+                if (!$insertHistoryStmt->execute()) {
+                    throw new Exception("Error inserting into history: " . $insertHistoryStmt->error);
+                }
+                
+                $historyIds[] = $conn->insert_id;
             }
-            $conn->commit(); // Commit the transaction
-            $_SESSION['cart'] = []; // Clear the cart only after successful DB operations
-            $_SESSION['toastr_success'] = "Checkout successful! Your rewards have been processed.";
             
-            // Redirect to home or a confirmation page
-            header("Location: home.php"); // Redirect to home page
+            $conn->commit();
+            $_SESSION['cart'] = [];
+            $_SESSION['UserPoints'] = $newPoints; // Update session points
+            $_SESSION['toastr_success'] = "Checkout successful! Your rewards have been processed.";
+            $_SESSION['last_checkout_history_ids'] = $historyIds;
+
+            header("Location: /../generate_receipt_pdf.php");
             exit();
 
         } catch (Exception $e) {
-            $conn->rollback(); // Rollback on error
-            error_log("Checkout failed: " . $e->getMessage()); // Log the error
+            $conn->rollback();
+            error_log("Checkout failed: " . $e->getMessage());
             $_SESSION['toastr_error'] = "An error occurred while recording your redemption. Please try again.";
-            header("Location: cart.php");
+            header("Location: /../cart.php");
             exit();
         }
     } else {
-        // Not enough points
         $_SESSION['toastr_error'] = "Not enough points to complete this checkout! You need " . number_format($totalPoints) . " points, but only have " . number_format($userPoints) . " points.";
-        header("Location: cart.php");
+        header("Location: /../cart.php");
         exit();
     }
 }
@@ -155,9 +192,9 @@ if (isset($_POST['checkout'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - My Cart</title>
-    <link rel="stylesheet" href="toastr.min.css">
+    <link rel="stylesheet" href="/../toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="toastr.min.js"></script>
+    <script src="/../toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -323,14 +360,73 @@ if (isset($_POST['checkout'])) {
             background: #ffbc00;
             color: #fff;
         }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .quantity-btn {
+            background: #31c6f6;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .quantity-btn:hover {
+            background: #0e499f;
+        }
+        .quantity-display {
+            min-width: 30px;
+            text-align: center;
+            font-weight: bold;
+            color: #0e499f;
+        }
         @media(max-width: 800px) {
-            .container { max-width: 98vw; }
-            .header { padding: 1rem 1rem; }
-            .nav-links a { margin-left: 1rem; }
-            .logo { font-size: 1.5rem; }
-            .logo::before { font-size: 1.5rem; }
-            .cart-summary { flex-direction: column; align-items: flex-start; }
-            .checkout-btn { margin-top: 1rem; }
+            .container { 
+                max-width: 98vw; 
+                padding: 1.5rem;
+                margin: 1rem auto;
+            }
+            .header { 
+                padding: 1rem 1rem; 
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .nav-links { 
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 1rem;
+            }
+            .nav-links a { 
+                margin-left: 0; 
+            }
+            .logo { 
+                font-size: 1.5rem; 
+            }
+            .logo::before { 
+                font-size: 1.5rem; 
+            }
+            .cart-summary { 
+                flex-direction: column; 
+                align-items: flex-start; 
+                gap: 1rem;
+            }
+            .checkout-btn { 
+                margin-top: 1rem; 
+                width: 100%;
+                text-align: center;
+            }
+            .cart-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .quantity-controls {
+                align-self: flex-end;
+            }
         }
     </style>
 </head>
@@ -339,11 +435,11 @@ if (isset($_POST['checkout'])) {
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="home.php">Home</a>
-            <a href="rewards.php">Voucher</a>
-            <a href="profile.php">Profile</a>
-            <a href="cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="logout.php">
+            <a href="/../home.php">Home</a>
+            <a href="/../rewards.php">Voucher</a>
+            <a href="/../profile.php">Profile</a>
+            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="/../logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -355,63 +451,75 @@ if (isset($_POST['checkout'])) {
         <?php if (empty($cartItems)): ?>
             <div class="empty-cart">Your cart is empty. Start adding some exciting rewards!</div>
             <div style="text-align: center; margin-top: 2rem;">
-                <a href="home.php" class="checkout-btn">Continue Shopping</a>
+                <a href="/../home.php" class="checkout-btn">Continue Shopping</a>
             </div>
         <?php else: ?>
             <div class="cart-list">
                 <?php foreach ($cartItems as $itemId => $item): ?>
                     <div class="cart-item">
                         <div class="item-details">
-    <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
-    <div class="item-points"><?php echo number_format($item['points']); ?> Points</div>
-</div>
+                            <div class="item-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                            <div class="item-points"><?php echo number_format($item['points']); ?> Points each</div>
+                            <div class="item-quantity">Quantity: <?php echo $item['quantity']; ?></div>
+                            <div class="item-points">Subtotal: <?php echo number_format($item['points'] * $item['quantity']); ?> Points</div>
+                        </div>
 
-<div style="display:flex; align-items:center; gap:8px;">
-    <!-- Decrease button -->
-    <form method="post" style="display:inline;">
-        <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
-        <input type="hidden" name="action" value="decrease">
-        <button type="submit" class="checkout-btn" style="padding:5px 12px;">-</button>
-    </form>
+                        <div class="quantity-controls">
+                            <!-- Decrease button -->
+                            <form method="post" style="display:inline;">
+                                <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
+                                <input type="hidden" name="action" value="decrease">
+                                <button type="submit" class="quantity-btn">-</button>
+                            </form>
 
-    <!-- Quantity display -->
-    <span style="min-width:30px; text-align:center; font-weight:bold; color:#0e499f;">
-        <?php echo $item['quantity']; ?>
-    </span>
+                            <!-- Quantity display -->
+                            <span class="quantity-display">
+                                <?php echo $item['quantity']; ?>
+                            </span>
 
-    <!-- Increase button -->
-    <form method="post" style="display:inline;">
-        <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
-        <input type="hidden" name="action" value="increase">
-        <button type="submit" class="checkout-btn" style="padding:5px 12px;">+</button>
-    </form>
+                            <!-- Increase button -->
+                            <form method="post" style="display:inline;">
+                                <input type="hidden" name="update_item_id" value="<?php echo $itemId; ?>">
+                                <input type="hidden" name="action" value="increase">
+                                <button type="submit" class="quantity-btn">+</button>
+                            </form>
 
-    <!-- Remove button -->
-    <form method="post" style="display:inline;">
-        <input type="hidden" name="remove_item_id" value="<?php echo $itemId; ?>">
-        <button type="submit" class="remove-btn">Remove</button>
-    </form>
-</div>
-
+                            <!-- Remove button -->
+                            <form method="post" style="display:inline;">
+                                <input type="hidden" name="remove_item_id" value="<?php echo $itemId; ?>">
+                                <button type="submit" class="remove-btn">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
 
             <div class="cart-summary">
-                <div>Total Points Required: <span class="total-points"><?php echo number_format($totalPoints); ?></span></div>
+                <div>
+                    <div>Total Points Required: <span class="total-points"><?php echo number_format($totalPoints); ?></span></div>
+                    <div style="margin-top: 0.5rem; font-size: 1rem; color: #555;">
+                        Your available points: <strong><?php echo number_format($userPoints); ?></strong>
+                    </div>
+                </div>
                 <form method="post">
                     <button type="submit" name="checkout" class="checkout-btn">Checkout Now</button>
                 </form>
             </div>
-            <p style="text-align: center; margin-top: 1rem; color: #555;">
-                Your available points: <strong><?php echo number_format($userPoints); ?></strong>
-            </p>
+            
+            <?php if ($userPoints < $totalPoints): ?>
+                <div style="text-align: center; margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 5px; color: #856404;">
+                    <strong>Notice:</strong> You don't have enough points for this purchase. 
+                    <a href="/../rewards.php" style="color: #0e499f; text-decoration: underline;">Earn more points</a>
+                </div>
+            <?php endif; ?>
+            
         <?php endif; ?>
     </div>
 
     <div class="footer">
         &copy; <?php echo date("Y"); ?> OptimaBank Loyalty. All rights reserved.
     </div>
+
     <script>
         $(document).ready(function() {
             toastr.options = {
@@ -442,6 +550,21 @@ if (isset($_POST['checkout'])) {
                 toastr.error("<?php echo addslashes($_SESSION['toastr_error']); ?>");
                 <?php unset($_SESSION['toastr_error']); ?>
             <?php endif; ?>
+
+            // Update cart count dynamically
+            function updateCartCount() {
+                let total = 0;
+                <?php 
+                $cartItems = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+                foreach ($cartItems as $item) {
+                    echo "total += " . $item['quantity'] . ";\n";
+                }
+                ?>
+                $('#cart-item-count').text(total);
+            }
+
+            // Update cart count when page loads
+            updateCartCount();
         });
     </script>
 </body>

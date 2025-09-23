@@ -501,9 +501,10 @@ if (isset($_POST['checkout'])) {
                         Your available points: <strong><?php echo number_format($userPoints); ?></strong>
                     </div>
                 </div>
-                <form method="post">
-                    <button type="submit" name="checkout" class="checkout-btn">Checkout Now</button>
-                </form>
+                <form method="post" id="checkout-form">
+    <button type="submit" name="checkout" class="checkout-btn" id="checkout-btn">Checkout Now</button>
+</form>
+
             </div>
             
             <?php if ($userPoints < $totalPoints): ?>
@@ -566,6 +567,13 @@ if (isset($_POST['checkout'])) {
             // Update cart count when page loads
             updateCartCount();
         });
+
+        document.getElementById("checkout-form").addEventListener("submit", function() {
+    // Add a slight delay before reload so PHP can process checkout
+    setTimeout(function() {
+        location.reload();
+    }, 2000); // reload after 2 seconds
+});
     </script>
 </body>
 </html>

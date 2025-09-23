@@ -155,7 +155,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
                     $userPoints -= $voucher_cost;
                     $_SESSION['UserPoints'] = $userPoints;
                     
-                    $_SESSION['success_message'] = "Successfully redeemed '$voucher_name'!";
+                    // Store redeemed voucher info for PDF download
+                    $_SESSION['success_message_redeem'] = "Successfully redeemed '$voucher_name'!";
+                    $_SESSION['redeemed_voucher_id'] = $voucher_id;
+                    $_SESSION['redeemed_voucher_name'] = $voucher_name;
+
                 } catch (Exception $e) {
                     // Rollback transaction on error
                     $conn->rollback();
@@ -501,6 +505,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             color: #6c757d;
             font-style: italic;
         }
+        /* Styles for the Toastr Download Button */
+        .toastr-download-btn {
+            background-color: #ffe165;
+            color: #0e499f;
+            border: 1px solid #ffe165;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 10px;
+            display: inline-block;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .toastr-download-btn:hover {
+            background-color: #ffbc00;
+            color: #fff;
+            border-color: #ffbc00;
+        }
         
         @media(max-width: 768px) {
             .header {
@@ -662,7 +684,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
     <script>
         $(document).ready(function() {
             toastr.options = {
-                "closeButton": false,
+                "closeButton": true, // Changed to true for direct messages
                 "debug": false,
                 "newestOnTop": false,
                 "progressBar": false,
@@ -671,7 +693,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
                 "onclick": null,
                 "showDuration": "300",
                 "hideDuration": "1000",
-                "timeOut": "4000",
+                "timeOut": "4000", // Default timeout for general messages
                 "extendedTimeOut": "1000",
                 "showEasing": "swing",
                 "hideEasing": "linear",
@@ -679,7 +701,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
                 "hideMethod": "fadeOut"
             };
 
-            <?php if (isset($_SESSION['success_message'])): ?>
+            // Options for redemption success message (sticky with download button)
+            var redemptionToastrOptions = {
+                "closeButton": true,
+                "tapToDismiss": false, // Keep toastr open until user clicks button or closes
+                "timeOut": "0",        // Keep toastr open indefinitely
+                "extendedTimeOut": "0",
+            };
+
+            <?php if (isset($_SESSION['success_message_redeem'])): ?>
+                var voucherId = <?php echo isset($_SESSION['redeemed_voucher_id']) ? intval($_SESSION['redeemed_voucher_id']) : 'null'; ?>;
+                var voucherName = "<?php echo addslashes(isset($_SESSION['redeemed_voucher_name']) ? $_SESSION['redeemed_voucher_name'] : 'Your Voucher'); ?>";
+
+                if (voucherId) {
+                    var downloadLink = 'generate_voucher_pdf.php?voucher_id=' + voucherId;
+                    var htmlMessage = '<div>' +
+                                      '<strong>Voucher Redeemed!</strong><br>' +
+                                      'You have successfully redeemed ' + voucherName + '.' +
+                                      '<br><a href="' + downloadLink + '" target="_blank" class="toastr-download-btn">Download PDF Voucher</a>' +
+                                      '</div>';
+                    toastr.success(htmlMessage, 'Redemption Successful', redemptionToastrOptions);
+                } else {
+                    toastr.success("<?php echo addslashes($_SESSION['success_message_redeem']); ?>");
+                }
+                <?php
+                    unset($_SESSION['success_message_redeem']);
+                    unset($_SESSION['redeemed_voucher_id']);
+                    unset($_SESSION['redeemed_voucher_name']);
+                ?>
+            <?php elseif (isset($_SESSION['success_message'])): ?>
                 toastr.success("<?php echo addslashes($_SESSION['success_message']); ?>");
                 <?php unset($_SESSION['success_message']); ?>
             <?php endif; ?>

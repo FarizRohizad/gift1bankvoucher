@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: landingpage.php");
+    header("Location: /../landingpage.php");
     exit();
 }
 
@@ -76,9 +76,9 @@ function getVoucherIcon($categoryName) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - Home</title>
-    <link rel="stylesheet" href="toastr.min.css">
+    <link rel="stylesheet" href="/../toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="toastr.min.js"></script>
+    <script src="/../toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -257,21 +257,41 @@ function getVoucherIcon($categoryName) {
             background: #ffbc00;
             color: #fff;
         }
+
+        /* Styles for the Toastr Download Button */
+        .toastr-download-btn {
+            background-color: #ffe165;
+            color: #0e499f;
+            border: 1px solid #ffe165;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 10px;
+            display: inline-block;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .toastr-download-btn:hover {
+            background-color: #ffbc00;
+            color: #fff;
+            border-color: #ffbc00;
+        }
+
         @media(max-width: 800px) {
             .welcome-section, .offers-section { max-width: 98vw; }
         }
     </style>
 </head>
 <body>
-    
+
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="home.php">Home</a>
-            <a href="rewards.php">Voucher</a>
-            <a href="profile.php">Profile</a>
-            <a href="cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="logout.php">
+            <a href="/../home.php">Home</a>
+            <a href="/../rewards.php">Voucher</a>
+            <a href="/../profile.php">Profile</a>
+            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="/../logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -288,8 +308,8 @@ function getVoucherIcon($categoryName) {
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
             <div>Earn more points by making transactions, referrals, or redeeming special offers.</div>
         </div>
-        <a href="rewards.php" class="btn">Redeem Rewards</a>
-        <a href="profile.php" class="btn">My Profile</a>
+        <a href="/../rewards.php" class="btn">Redeem Rewards</a>
+        <a href="/../profile.php" class="btn">My Profile</a>
     </div>
     <div class="offers-section">
         <div class="offers-title">Featured Offers</div>
@@ -300,7 +320,7 @@ function getVoucherIcon($categoryName) {
                 <div class="offer-name"><?php echo htmlspecialchars($voucher['name']); ?></div>
                 <div class="offer-points"><?php echo number_format($voucher['cost']); ?> Points</div>
                 <div class="offer-desc">
-                    <?php 
+                    <?php
                         // You'll likely need a 'description' column in your Voucher table
                         // For now, I'll use a generic description based on the name.
                         switch($voucher['name']) {
@@ -312,11 +332,12 @@ function getVoucherIcon($categoryName) {
                         }
                     ?>
                 </div>
-                <!-- Changed back to button with data attributes for AJAX -->
-                <button class="btn add-to-cart-btn" 
-                        data-id="<?php echo htmlspecialchars($voucher['voucherID']); ?>" 
-                        data-name="<?php echo htmlspecialchars($voucher['name']); ?>" 
-                        data-points="<?php echo htmlspecialchars($voucher['cost']); ?>">Add to Cart</button>
+                <!-- This button will now directly try to redeem using redeem_voucher.php -->
+                <!-- The "Add to Cart" functionality should ideally be on rewards.php or a dedicated shop page -->
+                <button class="btn redeem-now-btn"
+                        data-id="<?php echo htmlspecialchars($voucher['voucherID']); ?>"
+                        data-name="<?php echo htmlspecialchars($voucher['name']); ?>"
+                        data-points="<?php echo htmlspecialchars($voucher['cost']); ?>">Redeem Now</button>
             </div>
             <?php endforeach; ?>
             <?php if (empty($vouchers)): ?>
@@ -330,7 +351,7 @@ function getVoucherIcon($categoryName) {
     <script>
         $(document).ready(function() {
             toastr.options = {
-                "closeButton": false,
+                "closeButton": true, // Enable close button
                 "debug": false,
                 "newestOnTop": false,
                 "progressBar": false,
@@ -346,13 +367,42 @@ function getVoucherIcon($categoryName) {
                 "showMethod": "fadeIn",
                 "hideMethod": "fadeOut"
             };
+
+            // Override timeOut for specific redemption success messages
+            var redemptionToastrOptions = {
+                "closeButton": true,
+                "tapToDismiss": false, // Keep toastr open until user clicks button or closes
+                "timeOut": "0",        // Keep toastr open indefinitely
+                "extendedTimeOut": "0",
+            };
+
             <?php if (isset($_SESSION['welcome'])): ?>
                 toastr.success("<?php echo addslashes($_SESSION['welcome']); ?>");
                 <?php unset($_SESSION['welcome']); ?>
             <?php endif; ?>
 
             // Display Toastr messages if set in session by other pages (like cart.php)
-            <?php if (isset($_SESSION['toastr_success'])): ?>
+            <?php if (isset($_SESSION['toastr_success_redeem'])): ?>
+                var voucherId = <?php echo isset($_SESSION['redeemed_voucher_id']) ? intval($_SESSION['redeemed_voucher_id']) : 'null'; ?>;
+                var voucherName = "<?php echo addslashes(isset($_SESSION['redeemed_voucher_name']) ? $_SESSION['redeemed_voucher_name'] : 'Your Voucher'); ?>";
+
+                if (voucherId) {
+                    var downloadLink = '/../generate_voucher_pdf.php?voucher_id=' + voucherId;
+                    var htmlMessage = '<div>' +
+                                      '<strong>Voucher Redeemed!</strong><br>' +
+                                      'You have successfully redeemed ' + voucherName + '.' +
+                                      '<br><a href="' + downloadLink + '" target="_blank" class="toastr-download-btn">Download PDF Voucher</a>' +
+                                      '</div>';
+                    toastr.success(htmlMessage, 'Redemption Successful', redemptionToastrOptions);
+                } else {
+                    toastr.success("<?php echo addslashes($_SESSION['toastr_success_redeem']); ?>");
+                }
+                <?php
+                    unset($_SESSION['toastr_success_redeem']);
+                    unset($_SESSION['redeemed_voucher_id']);
+                    unset($_SESSION['redeemed_voucher_name']);
+                ?>
+            <?php elseif (isset($_SESSION['toastr_success'])): ?>
                 toastr.success("<?php echo addslashes($_SESSION['toastr_success']); ?>");
                 <?php unset($_SESSION['toastr_success']); ?>
             <?php endif; ?>
@@ -362,25 +412,66 @@ function getVoucherIcon($categoryName) {
                 <?php unset($_SESSION['toastr_error']); ?>
             <?php endif; ?>
 
-            // Handle Add to Cart button clicks
+            // Handle "Redeem Now" button clicks (for direct redemption from home page)
+            $('.redeem-now-btn').on('click', function() {
+                const voucherId = $(this).data('id');
+                const voucherName = $(this).data('name');
+                const voucherPoints = $(this).data('points');
+                const $button = $(this); // Store reference to the clicked button
+
+                if (confirm('Are you sure you want to redeem "' + voucherName + '" for ' + voucherPoints.toLocaleString() + ' points?')) {
+                    $.ajax({
+                        url: '/../redeem_voucher.php', // Path to your new AJAX script
+                        type: 'POST',
+                        data: { voucher_id: voucherId },
+                        dataType: 'json', // Expect JSON response
+                        success: function(res) {
+                            if (res.status === 'success') {
+                                var downloadLink = '/../generate_voucher_pdf.php?voucher_id=' + res.redeemedVoucherId;
+                                var htmlMessage = '<div>' +
+                                                  '<strong>Voucher Redeemed!</strong><br>' +
+                                                  'You have successfully redeemed ' + res.redeemedVoucherName + '.' +
+                                                  '<br><a href="' + downloadLink + '" target="_blank" class="toastr-download-btn">Download PDF Voucher</a>' +
+                                                  '</div>';
+                                toastr.success(htmlMessage, 'Redemption Successful', redemptionToastrOptions);
+
+                                // Update points display
+                                $('#points-balance').text(res.newPoints.toLocaleString());
+
+                                // Disable the button after successful redemption
+                                $button.prop('disabled', true).text('Redeemed');
+                                $button.css('background', '#ccc'); // Optional: change style
+
+                            } else {
+                                toastr.error(res.message);
+                            }
+                        },
+                        error: function() {
+                            toastr.error("Error during redemption.");
+                        }
+                    });
+                }
+            });
+
+            // If you still have "Add to Cart" functionality somewhere, keep this:
+            /*
             $('.add-to-cart-btn').on('click', function() {
                 const itemId = $(this).data('id');
                 const itemName = $(this).data('name');
                 const itemPoints = $(this).data('points');
 
                 $.ajax({
-                    url: 'add_to_cart.php', // Path to your new AJAX script
+                    url: '/../add_to_cart.php', // Path to your existing add to cart script
                     type: 'POST',
                     data: {
                         id: itemId,
                         name: itemName,
                         points: itemPoints
                     },
-                    dataType: 'json', // Expect JSON response
+                    dataType: 'json',
                     success: function(res) {
                         if (res.status === 'success') {
                             toastr.success(res.message);
-                            // Update cart count from the response
                             $('#cart-item-count').text(res.cartTotalQuantity);
                         } else {
                             toastr.error(res.message);
@@ -391,6 +482,7 @@ function getVoucherIcon($categoryName) {
                     }
                 });
             });
+            */
         });
     </script>
 </body>

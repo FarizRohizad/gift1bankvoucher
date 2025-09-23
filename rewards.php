@@ -43,11 +43,52 @@ foreach ($_SESSION['cart'] as $item) {
     $cartItemCount += $item['quantity'];
 }
 
-// Fetch vouchers from database
-$vouchers = [];
-$sql = "SELECT voucherID, name, expiredDate, cost, categoryName FROM Voucher WHERE expiredDate >= CURDATE() ORDER BY categoryName, cost";
-$result = $conn->query($sql);
+// Get search and filter parameters
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
 
+// Build SQL query with filters
+$sql = "SELECT voucherID, name, expiredDate, cost, categoryName FROM Voucher WHERE expiredDate >= CURDATE()";
+
+// Add search filter if provided
+if (!empty($search_query)) {
+    $sql .= " AND name LIKE ?";
+}
+
+// Add category filter if provided
+if (!empty($category_filter) && $category_filter !== 'all') {
+    $sql .= " AND categoryName = ?";
+}
+
+$sql .= " ORDER BY categoryName, cost";
+
+// Prepare and execute the query
+$stmt = $conn->prepare($sql);
+
+if (!empty($search_query) && !empty($category_filter) && $category_filter !== 'all') {
+    $search_param = "%" . $search_query . "%";
+    $stmt->bind_param("ss", $search_param, $category_filter);
+} elseif (!empty($search_query)) {
+    $search_param = "%" . $search_query . "%";
+    $stmt->bind_param("s", $search_param);
+} elseif (!empty($category_filter) && $category_filter !== 'all') {
+    $stmt->bind_param("s", $category_filter);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
+
+// Get all available categories for the filter dropdown
+$categories_sql = "SELECT DISTINCT categoryName FROM Voucher WHERE expiredDate >= CURDATE() ORDER BY categoryName";
+$categories_result = $conn->query($categories_sql);
+$available_categories = [];
+if ($categories_result && $categories_result->num_rows > 0) {
+    while ($row = $categories_result->fetch_assoc()) {
+        $available_categories[] = $row['categoryName'];
+    }
+}
+
+$vouchers = [];
 if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $category = $row['categoryName'];
@@ -156,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
     }
     
     // Redirect to avoid form resubmission
-    header("Location: " . $_SERVER['PHP_SELF']);
+    header("Location: " . $_SERVER['PHP_SELF'] . (!empty($_GET) ? '?' . http_build_query($_GET) : ''));
     exit();
 }
 
@@ -226,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             line-height: 1;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 2rem auto;
             padding: 0 2rem;
         }
@@ -263,6 +304,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             margin-left: 10px;
             font-size: 2rem;
         }
+        
+        /* Search and Filter Section - Stacked Layout */
+        .search-filter-section {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 28px rgba(14,73,159,0.07);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-filter-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: end;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box {
+            flex: 2;
+            position: relative;
+        }
+
+        .filter-dropdown {
+            flex: 1;
+        }
+
+        .search-box input,
+        .filter-dropdown select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e1e5eb;
+            border-radius: 50px;
+            font-size: 1rem;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus,
+        .filter-dropdown select:focus {
+            outline: none;
+            border-color: #31c6f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(49,198,246,0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: center;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #0e499f, #31c6f6);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(49,198,246,0.13);
+        }
+        .btn:hover {
+            background: #31c6f6;
+            color: #0e499f;
+            box-shadow: 0 6px 18px rgba(14,73,159,0.13);
+        }
+        .btn-clear {
+            background: linear-gradient(135deg, #6c757d, #adb5bd);
+        }
+        .btn-clear:hover {
+            background: #adb5bd;
+            color: white;
+        }
+        
         .category-section {
             background: #fff;
             border-radius: 20px;
@@ -318,24 +444,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             flex-grow: 1; /* Allows description to take up available space */
             margin-bottom: 1rem;
         }
-        .btn {
-            display: inline-block;
-            background: linear-gradient(135deg, #0e499f, #31c6f6);
-            color: white;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: background 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(49,198,246,0.13);
-        }
-        .btn:hover {
-            background: #31c6f6;
-            color: #0e499f;
-            box-shadow: 0 6px 18px rgba(14,73,159,0.13);
-        }
         .btn-redeem {
             padding: 0.6rem 1.5rem;
             font-size: 1rem;
@@ -387,6 +495,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             background: #ffbc00;
             color: #fff;
         }
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
         @media(max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -412,6 +527,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             .container {
                 padding: 0 1rem;
             }
+            .search-filter-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .search-box, .filter-dropdown {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -436,6 +558,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
         <div class="points-summary">
             <h2>Your Current Loyalty Points:</h2>
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="search-filter-section">
+            <form method="GET" action="" class="search-filter-form">
+                <div class="search-filter-row">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" name="search" placeholder="Search vouchers by name..." value="<?php echo htmlspecialchars($search_query); ?>">
+                    </div>
+                    <div class="filter-dropdown">
+                        <select name="category">
+                            <option value="all" <?php echo ($category_filter === 'all' || empty($category_filter)) ? 'selected' : ''; ?>>All Categories</option>
+                            <?php foreach ($available_categories as $category): ?>
+                                <option value="<?php echo htmlspecialchars($category); ?>" <?php echo ($category_filter === $category) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($category); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn">Apply Filters</button>
+                    <a href="rewards.php" class="btn btn-clear">Clear</a>
+                </div>
+            </form>
         </div>
 
         <?php if (!empty($vouchers)): ?>
@@ -497,8 +645,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['voucher_id']) && isse
             <?php endforeach; ?>
         <?php else: ?>
             <div class="category-section">
-                <h3 class="category-title">No Vouchers Available</h3>
-                <p>There are currently no vouchers available for redemption. Please check back later.</p>
+                <div class="no-results">
+                    <h3>No Vouchers Found</h3>
+                    <p>No vouchers match your search criteria. Try adjusting your filters or search term.</p>
+                    <a href="rewards.php" class="btn">View All Vouchers</a>
+                </div>
             </div>
         <?php endif; ?>
 

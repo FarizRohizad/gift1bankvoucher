@@ -91,25 +91,44 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="toastr.min.js"></script>
     <style>
+    :root {
+        --primary-blue: #0e499f;
+        --secondary-blue: #31c6f6;
+        --light-blue: #e6f4ff;
+        --dark-blue: #143c6b;
+        --accent-yellow: #ffe165;
+        --text-dark: #333;
+        --text-light: #6c757d;
+        --white: #ffffff;
+        --light-gray: #f8f9fa;
+        --border-radius: 12px;
+        --box-shadow: 0 8px 28px rgba(14,73,159,0.07);
+        --transition: all 0.3s ease;
+    }
+    
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #f4f7fc;
+        background: linear-gradient(135deg, #f4f7fc 0%, #e6f4ff 100%);
         margin: 0;
         padding: 0;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+        color: var(--text-dark);
     }
 
     /* ===== HEADER ===== */
     .header {
-        background: linear-gradient(135deg, #0e499f, #31c6f6);
-        color: white;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: var(--white);
         padding: 1rem 2rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
     }
 
     .logo {
@@ -129,33 +148,35 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
         gap: 1.5rem;
     }
     .nav-links a {
-        color: #fff;
+        color: var(--white);
         text-decoration: none;
         font-weight: 500;
-        transition: color 0.3s;
+        transition: var(--transition);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
     }
     .nav-links a:hover {
-        color: #ffe165;
+        color: var(--accent-yellow);
+        background: rgba(255, 255, 255, 0.1);
     }
 
     /* ===== LOGOUT BUTTON ===== */
-   header .logout-btn {
-    background: #ffe165 !important;
-    color: #0e499f !important;
-    border: none !important;
-    padding: 0.2rem 1rem !important;
-    border-radius: 50px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    transition: all 0.3s !important;
-    box-shadow: none !important;
-}
-header .logout-btn:hover {
-    background: #ffd633 !important;
-    color: #0e499f !important;
-    transform: scale(1.05);
-}
-
+    header .logout-btn {
+        background: var(--accent-yellow) !important;
+        color: var(--primary-blue) !important;
+        border: none !important;
+        padding: 0.5rem 1.5rem !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: var(--transition) !important;
+        box-shadow: none !important;
+    }
+    header .logout-btn:hover {
+        background: #ffd633 !important;
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(255, 225, 101, 0.3);
+    }
 
     /* ===== MAIN CONTENT ===== */
     .main-container {
@@ -170,116 +191,182 @@ header .logout-btn:hover {
     /* ===== PROFILE SECTION ===== */
     .profile-section {
         flex: 1;
-        background: white;
-        padding: 2rem;
-        border-radius: 20px;
-        box-shadow: 0 8px 28px rgba(14,73,159,0.07);
+        background: var(--white);
+        padding: 2.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
     }
 
     /* ===== HISTORY SECTION ===== */
     .history-section {
         flex: 1;
-        background: white;
-        padding: 2rem;
-        border-radius: 20px;
-        box-shadow: 0 8px 28px rgba(14,73,159,0.07);
+        background: var(--white);
+        padding: 2.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
         max-height: 700px;
         overflow-y: auto;
+        position: relative;
+    }
+    
+    .history-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: linear-gradient(90deg, var(--secondary-blue), var(--primary-blue));
     }
 
     h2 {
-        color: #0e499f;
+        color: var(--primary-blue);
         text-align: center;
         margin-bottom: 2rem;
-        font-size: 2rem;
+        font-size: 2.2rem;
+        position: relative;
+        padding-bottom: 1rem;
+    }
+    
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
+        border-radius: 2px;
     }
 
     /* ===== FORM ===== */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
     form label {
         display: block;
-        margin-top: 1rem;
+        margin-bottom: 0.5rem;
         font-weight: 600;
-        color: #0e499f;
+        color: var(--primary-blue);
+        font-size: 1rem;
     }
+    
     form input[type="text"],
     form input[type="email"],
     form input[type="password"] {
         width: 100%;
         padding: 1rem 1.2rem;
-        margin-top: 0.3rem;
-        border: 1px solid #ccc;
-        border-radius: 12px;
+        border: 2px solid #e1e5eb;
+        border-radius: var(--border-radius);
         font-size: 1rem;
-        background: #f8f9fa;
-        transition: all 0.3s;
+        background: var(--light-gray);
+        transition: var(--transition);
+        box-sizing: border-box;
     }
+    
     form input[type="text"]:focus,
     form input[type="email"]:focus,
     form input[type="password"]:focus {
         outline: none;
-        border-color: #31c6f6;
-        background: white;
+        border-color: var(--secondary-blue);
+        background: var(--white);
         box-shadow: 0 0 0 3px rgba(49,198,246,0.1);
     }
 
     /* ===== SUBMIT BUTTON ===== */
     button[type="submit"] {
-        margin-top: 2rem;
+        margin-top: 1.5rem;
         width: 100%;
-        background: linear-gradient(135deg, #0e499f, #31c6f6);
-        color: white;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: var(--white);
         border: none;
-        padding: 0.9rem;
+        padding: 1rem;
         font-size: 1.1rem;
         border-radius: 50px;
         cursor: pointer;
-        transition: all 0.3s;
-        box-shadow: 0 2px 8px rgba(49,198,246,0.13);
+        transition: var(--transition);
+        box-shadow: 0 4px 15px rgba(14,73,159,0.2);
+        font-weight: 600;
+        letter-spacing: 0.5px;
     }
+    
     button[type="submit"]:hover {
-        background: #31c6f6;
-        color: #0e499f;
-        box-shadow: 0 6px 18px rgba(14,73,159,0.13);
+        background: linear-gradient(135deg, var(--secondary-blue), var(--primary-blue));
+        box-shadow: 0 6px 20px rgba(14,73,159,0.3);
+        transform: translateY(-2px);
     }
 
     /* ===== MESSAGE BOX ===== */
     .message {
         margin-top: 1rem;
-        padding: 0.8rem;
-        border-radius: 8px;
+        padding: 1rem;
+        border-radius: var(--border-radius);
         text-align: center;
         font-weight: 600;
+        border-left: 4px solid;
     }
+    
     .error {
         background: #f8d7da;
         color: #842029;
+        border-left-color: #dc3545;
     }
+    
     .success {
         background: #d1e7dd;
         color: #0f5132;
+        border-left-color: #198754;
     }
 
     /* ===== BACK LINK ===== */
     .back-link {
-        display: block;
+        display: inline-flex;
+        align-items: center;
         margin-top: 1.5rem;
-        text-align: center;
-        color: #0e499f;
+        color: var(--primary-blue);
         text-decoration: none;
         font-weight: 600;
+        transition: var(--transition);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
     }
+    
     .back-link:hover {
-        text-decoration: underline;
+        color: var(--secondary-blue);
+        background: var(--light-blue);
+        text-decoration: none;
+        transform: translateX(-5px);
+    }
+    
+    .back-link::before {
+        content: '←';
+        margin-right: 8px;
+        transition: var(--transition);
     }
 
     /* ===== FOOTER ===== */
     footer.footer {
-        background: #143c6b;
-        color: white;
+        background: var(--dark-blue);
+        color: var(--white);
         padding: 2rem 1rem 1rem;
         text-align: center;
         margin-top: auto;
     }
+    
     footer.footer p {
         margin: 0;
         color: #ccc;
@@ -291,92 +378,117 @@ header .logout-btn:hover {
         justify-content: space-between;
         align-items: center;
         margin-bottom: 1.5rem;
-        padding-bottom: 0.5rem;
+        padding-bottom: 1rem;
         border-bottom: 2px solid #f0f0f0;
     }
     
     .history-header h3 {
-        color: #0e499f;
+        color: var(--primary-blue);
         margin: 0;
-        font-size: 1.5rem;
+        font-size: 1.8rem;
+        position: relative;
+        padding-bottom: 0.5rem;
     }
     
-    .history-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 1rem;
-    }
-    
-    .history-table th,
-    .history-table td {
-        padding: 0.8rem;
-        text-align: left;
-        border-bottom: 1px solid #eaeaea;
-    }
-    
-    .history-table th {
-        background-color: #f4f7fc;
-        color: #0e499f;
-        font-weight: 600;
-        position: sticky;
-        top: 0;
-    }
-    
-    .history-table tr:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .no-history {
-        text-align: center;
-        padding: 2rem;
-        color: #6c757d;
-        font-style: italic;
-    }
-    
-    .category-badge {
-        display: inline-block;
-        padding: 0.3rem 0.6rem;
-        border-radius: 50px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        background: linear-gradient(135deg, #0e499f, #31c6f6);
-        color: white;
-    }
-    
-    .cost-cell {
-        color: #dc3545;
-        font-weight: 600;
+    .history-header h3::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: var(--secondary-blue);
+        border-radius: 2px;
     }
     
     .history-item {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border-radius: 12px;
-        background: #f8f9fa;
-        border-left: 4px solid #0e499f;
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        background: var(--light-gray);
+        border-left: 4px solid var(--primary-blue);
+        transition: var(--transition);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .history-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
     }
     
     .history-item-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
     }
     
     .history-item-name {
         font-weight: 600;
-        color: #0e499f;
+        color: var(--primary-blue);
+        font-size: 1.2rem;
     }
     
     .history-item-date {
-        color: #6c757d;
+        color: var(--text-light);
         font-size: 0.9rem;
+        background: var(--white);
+        padding: 0.3rem 0.8rem;
+        border-radius: 50px;
+        font-weight: 500;
     }
     
     .history-item-details {
         display: flex;
         justify-content: space-between;
-        color: #495057;
+        color: var(--text-dark);
+        align-items: center;
+    }
+    
+    .category-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: var(--white);
+        box-shadow: 0 2px 5px rgba(14,73,159,0.2);
+    }
+    
+    .cost-cell {
+        color: #dc3545;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .no-history {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-light);
+        font-style: italic;
+    }
+    
+    .no-history p {
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .no-history a {
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 600;
+        transition: var(--transition);
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        background: var(--light-blue);
+    }
+    
+    .no-history a:hover {
+        color: var(--secondary-blue);
+        background: var(--white);
+        box-shadow: 0 2px 8px rgba(14,73,159,0.1);
     }
 
     /* ===== RESPONSIVE ===== */
@@ -390,7 +502,7 @@ header .logout-btn:hover {
         }
     }
     
-    @media(max-width: 640px) {
+    @media(max-width: 768px) {
         .header {
             padding: 1rem;
             flex-direction: column;
@@ -399,6 +511,8 @@ header .logout-btn:hover {
         
         .nav-links {
             gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
         .logo {
@@ -406,7 +520,7 @@ header .logout-btn:hover {
         }
         
         .main-container {
-            margin: 1rem auto;
+            margin: 1.5rem auto;
             padding: 0 1rem;
         }
         
@@ -417,11 +531,41 @@ header .logout-btn:hover {
         .history-item-header {
             flex-direction: column;
             align-items: flex-start;
+            gap: 0.5rem;
         }
         
         .history-item-details {
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.8rem;
+            align-items: flex-start;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+        }
+        
+        .history-header h3 {
+            font-size: 1.5rem;
+        }
+    }
+    
+    @media(max-width: 480px) {
+        .nav-links {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .nav-links a {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .profile-section, .history-section {
+            padding: 1rem;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
         }
     }
     </style>
@@ -445,29 +589,37 @@ header .logout-btn:hover {
         <section class="profile-section">
             <h2>My Profile</h2>
 
-            <?php if ($error): ?>
+            <?php if (isset($error) && $error): ?>
                 <div class="message error"><?php echo htmlspecialchars($error); ?></div>
-            <?php elseif ($message): ?>
+            <?php elseif (isset($message) && $message): ?>
                 <div class="message success"><?php echo htmlspecialchars($message); ?></div>
             <?php endif; ?>
 
             <form method="POST" action="">
-                <label for="name">Username</label>
-                <input type="text" id="name" name="name" required value="<?php echo htmlspecialchars($user['User_Name']); ?>">
+                <div class="form-group">
+                    <label for="name">Username</label>
+                    <input type="text" id="name" name="name" required value="<?php echo isset($user['User_Name']) ? htmlspecialchars($user['User_Name']) : ''; ?>">
+                </div>
 
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required value="<?php echo htmlspecialchars($user['User_Email']); ?>">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required value="<?php echo isset($user['User_Email']) ? htmlspecialchars($user['User_Email']) : ''; ?>">
+                </div>
 
-                <label for="new_password">New Password (leave blank if you don't want to change)</label>
-                <input type="password" id="new_password" name="new_password">
+                <div class="form-group">
+                    <label for="new_password">New Password (leave blank if you don't want to change)</label>
+                    <input type="password" id="new_password" name="new_password">
+                </div>
 
-                <label for="confirm_password">Confirm New Password</label>
-                <input type="password" id="confirm_password" name="confirm_password">
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password">
+                </div>
 
                 <button type="submit">Update Profile</button>
             </form>
 
-            <a href="home.php" class="back-link">&larr; Back to Home</a>
+            <a href="home.php" class="back-link">Back to Home</a>
         </section>
         
         <!-- Voucher Redemption History Section -->

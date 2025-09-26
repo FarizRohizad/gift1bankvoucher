@@ -4,7 +4,7 @@ include('connect.php'); // Your database connection
 
 if (!isset($_SESSION['UserID'])) {
     // If not logged in, redirect or show error
-    header("Location: /../landingpage.php");
+    header("Location: /group1GIFT/landingpage.php");
     exit();
 }
 

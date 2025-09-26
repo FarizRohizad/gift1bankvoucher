@@ -3,7 +3,7 @@ session_start();
 include('connect.php'); // Your database connection
 
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: /group1GIFT/landingpage.php");
     exit();
 }
 

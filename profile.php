@@ -330,6 +330,29 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
     transform: scale(1.05);
 }
 
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 3rem; /* space for eye button */
+}
+
+.toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--secondary-blue);
+    font-size: 1.2rem;
+}
+.toggle-password:hover {
+    color: var(--primary-blue);
+}
+
 
     /* FOOTER */
     .footer {
@@ -348,12 +371,29 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
 </head>
 
 <script>
+
 $(document).ready(function(){
+    // Show/hide password fields section
     $("#forgotPasswordBtn").on("click", function(){
-        $("#passwordFields").slideToggle(300); // smooth show/hide
+        $("#passwordFields").slideToggle(300);
         $(this).text(function(i, text){
             return text === "Forgot Password?" ? "Cancel Password Reset" : "Forgot Password?";
         });
+    });
+
+    // Toggle password visibility
+    $(".toggle-password").on("click", function(){
+        const targetId = $(this).data("target");
+        const input = $("#" + targetId);
+        const icon = $(this).find("i");
+
+        if (input.attr("type") === "password") {
+            input.attr("type", "text");
+            icon.removeClass("fa-eye").addClass("fa-eye-slash");
+        } else {
+            input.attr("type", "password");
+            icon.removeClass("fa-eye-slash").addClass("fa-eye");
+        }
     });
 });
 </script>
@@ -400,15 +440,22 @@ $(document).ready(function(){
     <p style="color: var(--muted-text); font-size: 0.9rem; margin-bottom: 1rem;">
         Please enter your new password and confirm it below.
     </p>
-    <div class="form-group">
+    <div class="form-group password-wrapper">
         <label for="new_password"><i class="fas fa-lock"></i> New Password</label>
         <input type="password" id="new_password" name="new_password">
+        <button type="button" class="toggle-password" data-target="new_password">
+            <i class="fas fa-eye"></i>
+        </button>
     </div>
-    <div class="form-group">
+    <div class="form-group password-wrapper">
         <label for="confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
         <input type="password" id="confirm_password" name="confirm_password">
+        <button type="button" class="toggle-password" data-target="confirm_password">
+            <i class="fas fa-eye"></i>
+        </button>
     </div>
 </div>
+
 
                 <button type="submit"><i class="fas fa-save"></i> Update Profile</button>
             </form>

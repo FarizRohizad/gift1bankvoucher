@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: /group1GIFT/landingpage.php");
     exit();
 }
 
@@ -76,9 +76,9 @@ function getVoucherIcon($categoryName) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - Home</title>
-    <link rel="stylesheet" href="/../toastr.min.css">
+    <link rel="stylesheet" href="/group1GIFT/toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="/group1GIFT/toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -287,11 +287,11 @@ function getVoucherIcon($categoryName) {
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="/../logout.php">
+            <a href="/group1GIFT/home.php">Home</a>
+            <a href="/group1GIFT/rewards.php">Voucher</a>
+            <a href="/group1GIFT/profile.php">Profile</a>
+            <a href="/group1GIFT/cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="/group1GIFT/logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -308,8 +308,8 @@ function getVoucherIcon($categoryName) {
             <div class="points-balance" id="points-balance"><?php echo number_format($userPoints); ?></div>
             <div>Earn more points by making transactions, referrals, or redeeming special offers.</div>
         </div>
-        <a href="/../rewards.php" class="btn">Redeem Rewards</a>
-        <a href="/../profile.php" class="btn">My Profile</a>
+        <a href="/group1GIFT/rewards.php" class="btn">Redeem Rewards</a>
+        <a href="/group1GIFT/profile.php" class="btn">My Profile</a>
     </div>
     <div class="offers-section">
         <div class="offers-title">Featured Offers</div>
@@ -387,7 +387,7 @@ function getVoucherIcon($categoryName) {
                 var voucherName = "<?php echo addslashes(isset($_SESSION['redeemed_voucher_name']) ? $_SESSION['redeemed_voucher_name'] : 'Your Voucher'); ?>";
 
                 if (voucherId) {
-                    var downloadLink = '/../generate_voucher_pdf.php?voucher_id=' + voucherId;
+                    var downloadLink = '/group1GIFT/generate_voucher_pdf.php?voucher_id=' + voucherId;
                     var htmlMessage = '<div>' +
                                       '<strong>Voucher Redeemed!</strong><br>' +
                                       'You have successfully redeemed ' + voucherName + '.' +
@@ -421,13 +421,13 @@ function getVoucherIcon($categoryName) {
 
                 if (confirm('Are you sure you want to redeem "' + voucherName + '" for ' + voucherPoints.toLocaleString() + ' points?')) {
                     $.ajax({
-                        url: '/../redeem_voucher.php', // Path to your new AJAX script
+                        url: '/group1GIFT/redeem_voucher.php', // Path to your new AJAX script
                         type: 'POST',
                         data: { voucher_id: voucherId },
                         dataType: 'json', // Expect JSON response
                         success: function(res) {
                             if (res.status === 'success') {
-                                var downloadLink = '/../generate_voucher_pdf.php?voucher_id=' + res.redeemedVoucherId;
+                                var downloadLink = '/group1GIFT/generate_voucher_pdf.php?voucher_id=' + res.redeemedVoucherId;
                                 var htmlMessage = '<div>' +
                                                   '<strong>Voucher Redeemed!</strong><br>' +
                                                   'You have successfully redeemed ' + res.redeemedVoucherName + '.' +

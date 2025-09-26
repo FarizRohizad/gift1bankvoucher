@@ -499,7 +499,7 @@ header("Cross-Origin-Resource-Policy: cross-origin");
         </div>
         <div class="modal-footer">
             <p>Don't have an account? <a href="#" onclick="switchModal('loginModal', 'signupModal')">Sign up here</a></p>
-            <p><a href="#">Forgot your password?</a></p>
+            <p><a href="/group1GIFT/forgot_password.php">Forgot your password?</a></p>
         </div>
     </div>
 </div>

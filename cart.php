@@ -4,7 +4,7 @@ include('connect.php'); // make sure this points to your DB connection
 
 // Redirect to login if not authenticated
 if (!isset($_SESSION['UserID'])) {
-    header("Location: /../landingpage.php");
+    header("Location: /group1GIFT/landingpage.php");
     exit();
 }
 
@@ -69,7 +69,7 @@ if (isset($_POST['update_item_id']) && isset($_POST['action'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to update item quantity.";
     }
-    header("Location: /../cart.php");
+    header("Location: /group1GIFT/cart.php");
     exit();
 }
 
@@ -88,7 +88,7 @@ if (isset($_POST['remove_item_id'])) {
     } else {
         $_SESSION['toastr_error'] = "Failed to remove item.";
     }
-    header("Location: /../cart.php");
+    header("Location: /group1GIFT/cart.php");
     exit();
 }
 
@@ -97,7 +97,7 @@ if (isset($_POST['checkout'])) {
     // Check if cart is empty before proceeding
     if (empty($cartItems)) {
         $_SESSION['toastr_error'] = "Your cart is empty. Please add items before checking out.";
-        header("Location: /../cart.php");
+        header("Location: /group1GIFT/cart.php");
         exit();
     }
 
@@ -110,7 +110,7 @@ if (isset($_POST['checkout'])) {
         
         if (!$updateStmt) {
             $_SESSION['toastr_error'] = "Database error: " . $conn->error;
-            header("Location: /../cart.php");
+            header("Location: /group1GIFT/cart.php");
             exit();
         }
         
@@ -118,7 +118,7 @@ if (isset($_POST['checkout'])) {
         
         if (!$updateStmt->execute()) {
             $_SESSION['toastr_error'] = "An error occurred during point deduction. Please try again.";
-            header("Location: /../cart.php");
+            header("Location: /group1GIFT/cart.php");
             exit();
         }
 
@@ -169,19 +169,19 @@ if (isset($_POST['checkout'])) {
             $_SESSION['toastr_success'] = "Checkout successful! Your rewards have been processed.";
             $_SESSION['last_checkout_history_ids'] = $historyIds;
 
-            header("Location: /../generate_receipt_pdf.php");
+            header("Location: /group1GIFT/generate_receipt_pdf.php");
             exit();
 
         } catch (Exception $e) {
             $conn->rollback();
             error_log("Checkout failed: " . $e->getMessage());
             $_SESSION['toastr_error'] = "An error occurred while recording your redemption. Please try again.";
-            header("Location: /../cart.php");
+            header("Location: /group1GIFT/cart.php");
             exit();
         }
     } else {
         $_SESSION['toastr_error'] = "Not enough points to complete this checkout! You need " . number_format($totalPoints) . " points, but only have " . number_format($userPoints) . " points.";
-        header("Location: /../cart.php");
+        header("Location: /group1GIFT/cart.php");
         exit();
     }
 }
@@ -192,9 +192,9 @@ if (isset($_POST['checkout'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptimaBank Loyalty - My Cart</title>
-    <link rel="stylesheet" href="/../toastr.min.css">
+    <link rel="stylesheet" href="/group1GIFT/toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="/../toastr.min.js"></script>
+    <script src="/group1GIFT/toastr.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -435,11 +435,11 @@ if (isset($_POST['checkout'])) {
     <div class="header">
         <div class="logo">OptimaBank Loyalty</div>
         <div class="nav-links">
-            <a href="/../home.php">Home</a>
-            <a href="/../rewards.php">Voucher</a>
-            <a href="/../profile.php">Profile</a>
-            <a href="/../cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
-            <form style="display:inline;" method="post" action="/../logout.php">
+            <a href="/group1GIFT/home.php">Home</a>
+            <a href="/group1GIFT/rewards.php">Voucher</a>
+            <a href="/group1GIFT/profile.php">Profile</a>
+            <a href="/group1GIFT/cart.php">Cart <span class="cart-count" id="cart-item-count"><?php echo $cartItemCount; ?></span></a>
+            <form style="display:inline;" method="post" action="/group1GIFT/logout.php">
                 <button type="submit" class="logout-btn">Log Out</button>
             </form>
         </div>
@@ -451,7 +451,7 @@ if (isset($_POST['checkout'])) {
         <?php if (empty($cartItems)): ?>
             <div class="empty-cart">Your cart is empty. Start adding some exciting rewards!</div>
             <div style="text-align: center; margin-top: 2rem;">
-                <a href="/../home.php" class="checkout-btn">Continue Shopping</a>
+                <a href="/group1GIFT/home.php" class="checkout-btn">Continue Shopping</a>
             </div>
         <?php else: ?>
             <div class="cart-list">
@@ -510,7 +510,7 @@ if (isset($_POST['checkout'])) {
             <?php if ($userPoints < $totalPoints): ?>
                 <div style="text-align: center; margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 5px; color: #856404;">
                     <strong>Notice:</strong> You don't have enough points for this purchase. 
-                    <a href="/../rewards.php" style="color: #0e499f; text-decoration: underline;">Earn more points</a>
+                    <a href="/group1GIFT/rewards.php" style="color: #0e499f; text-decoration: underline;">Earn more points</a>
                 </div>
             <?php endif; ?>
             

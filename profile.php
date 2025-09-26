@@ -87,7 +87,7 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>My Profile - OptimaBank</title>
-    <link rel="stylesheet" href="/../toastr.min.css" />
+    <link rel="stylesheet" href="/group1GIFT/toastr.min.css" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="toastr.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -315,6 +315,22 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
         background: var(--primary-blue);
     }
 
+    .toggle-btn {
+    background: var(--secondary-blue);
+    color: #fff;
+    border: none;
+    padding: 0.8rem 1.2rem;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+.toggle-btn:hover {
+    background: var(--primary-blue);
+    transform: scale(1.05);
+}
+
+
     /* FOOTER */
     .footer {
         background: var(--primary-blue);
@@ -330,6 +346,18 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
     }
     </style>
 </head>
+
+<script>
+$(document).ready(function(){
+    $("#forgotPasswordBtn").on("click", function(){
+        $("#passwordFields").slideToggle(300); // smooth show/hide
+        $(this).text(function(i, text){
+            return text === "Forgot Password?" ? "Cancel Password Reset" : "Forgot Password?";
+        });
+    });
+});
+</script>
+
 <body>
     <header class="header">
         <div class="logo"><i class="fas fa-university"></i> OptimaBank Loyalty</div>
@@ -363,13 +391,25 @@ $redemption_history = $history_result->fetch_all(MYSQLI_ASSOC);
                     <input type="email" id="email" name="email" required value="<?= htmlspecialchars($user['User_Email']) ?>">
                 </div>
                 <div class="form-group">
-                    <label for="new_password"><i class="fas fa-lock"></i> New Password</label>
-                    <input type="password" id="new_password" name="new_password">
-                </div>
-                <div class="form-group">
-                    <label for="confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password">
-                </div>
+    <button type="button" id="forgotPasswordBtn" class="toggle-btn">
+        <i class="fas fa-lock"></i> Forgot Password?
+    </button>
+</div>
+
+<div id="passwordFields" style="display:none;">
+    <p style="color: var(--muted-text); font-size: 0.9rem; margin-bottom: 1rem;">
+        Please enter your new password and confirm it below.
+    </p>
+    <div class="form-group">
+        <label for="new_password"><i class="fas fa-lock"></i> New Password</label>
+        <input type="password" id="new_password" name="new_password">
+    </div>
+    <div class="form-group">
+        <label for="confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password">
+    </div>
+</div>
+
                 <button type="submit"><i class="fas fa-save"></i> Update Profile</button>
             </form>
         </section>

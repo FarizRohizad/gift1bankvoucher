@@ -1,3 +1,10 @@
+<?php
+header("Cross-Origin-Opener-Policy: same-origin-allow-popups");
+header("Cross-Origin-Embedder-Policy: credentialless");
+header("Cross-Origin-Resource-Policy: cross-origin");
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +14,8 @@
     <link rel="stylesheet" href="toastr.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="toastr.min.js"></script>
+    <script src="google-signin.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -276,6 +285,23 @@
         .modal-footer a:hover {
             text-decoration: underline;
         }
+
+        .toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #666;
+    transition: color 0.3s;
+}
+.toggle-password:hover {
+    color: #0e499f;
+}
+
         @media (max-width: 768px) {
             .modal-content { margin: 1rem; max-width: none;}
             .modal-header { padding: 1.5rem;}
@@ -435,11 +461,41 @@
                     <input type="email" id="loginEmail" name="Email" class="form-control" placeholder="Enter your email" required>
                 </div>
                 <div class="form-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" name="Password" class="form-control" placeholder="Enter your password" required>
-                </div>
+    <label for="loginPassword">Password</label>
+    <div style="position: relative;">
+        <input type="password" id="loginPassword" name="Password" class="form-control" placeholder="Enter your password" required>
+        <button type="button" class="toggle-password" data-target="loginPassword">👁</button>
+    </div>
+</div>
+
                 <button type="submit" class="btn-modal">Sign In</button>
             </form>
+
+            <!-- <div class="google-signup">
+                <button class="btn-google form-control" onclick="signInWithGoogle()"  id="g_id_signin">
+                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo"  style="width:20px; height:20px; vertical-align:middle; margin-right:10px;">
+                    Sign In with Google
+                    </button>
+            </div> -->
+            <div id="g_id_signin">
+                <div 
+                    id="g_id_onload"
+                    data-context="signin"
+                    data-ux_mode="popup"
+                    data-login_uri="gift1bankvoucher/sign_login/google_login.php"
+                    data-auto_prompt="false">
+                </div>
+
+                <div 
+                    class="g_id_signin"
+                    data-type="standard"
+                    data-shape="rectangular"
+                    data-theme="outline"
+                    data-text="continue_with"
+                    data-size="large"
+                    data-logo_alignment="left">
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <p>Don't have an account? <a href="#" onclick="switchModal('loginModal', 'signupModal')">Sign up here</a></p>
@@ -456,7 +512,7 @@
                 <p>Register now and start earning points instantly!</p>
             </div>
             <div class="modal-body">
-                 <form id="signupForm" action="/group1GIFT/sign_login/signup.php" method="POST">
+                 <form id="signupForm" action="sign_login/signup.php" method="POST">
                     <div class="form-group">
                         <label for="signupName">Username</label>
                         <input type="text" id="signupName" name="Name" class="form-control" placeholder="Enter your user name" required>
@@ -465,14 +521,22 @@
                         <label for="signupEmail">Email Address</label>
                         <input type="email" id="signupEmail" name="Email" class="form-control" placeholder="Enter your email" required>
                     </div>
-                    <div class="form-group">
-                        <label for="signupPassword">Password</label>
-                        <input type="password" id="signupPassword" name="Password" class="form-control" placeholder="Create a password" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword">Confirm Password</label>
-                        <input type="password" id="confirmPassword" name="ConfirmPassword" class="form-control" placeholder="Confirm your password" required>
-                    </div>
+                   <div class="form-group">
+    <label for="signupPassword">Password</label>
+    <div style="position: relative;">
+        <input type="password" id="signupPassword" name="Password" class="form-control" placeholder="Create a password" required>
+        <button type="button" class="toggle-password" data-target="signupPassword">👁</button>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="confirmPassword">Confirm Password</label>
+    <div style="position: relative;">
+        <input type="password" id="confirmPassword" name="ConfirmPassword" class="form-control" placeholder="Confirm your password" required>
+        <button type="button" class="toggle-password" data-target="confirmPassword">👁</button>
+    </div>
+</div>
+
                     <button type="submit" class="btn-modal">Create Account</button>
                 </form>
             </div>
@@ -495,6 +559,12 @@
                 }
             });
         });
+        // function signUpWithGoogle() {
+        //     alert("Google Sign Up clicked! Implement Google OAuth here.");
+        // }
+        // function signInWithGoogle() {
+        //     alert("Google Sign In clicked! Implement Google OAuth here.");
+        // }
         function openModal(modalId) {
             document.getElementById(modalId).classList.add('show');
             document.body.style.overflow = 'hidden';
@@ -555,6 +625,22 @@
             };
             toastr.success('Welcome to OptimaBank Loyalty Rewards!');
         });
+
+    // Toggle show/hide password
+document.querySelectorAll('.toggle-password').forEach(button => {
+    button.addEventListener('click', function () {
+        const input = document.getElementById(this.dataset.target);
+        if (input.type === "password") {
+            input.type = "text";
+            this.textContent = "🙈"; // change icon
+        } else {
+            input.type = "password";
+            this.textContent = "👁"; // back to eye
+        }
+    });
+});
+
     </script>
+
 </body>
 </html>
